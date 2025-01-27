@@ -1,4 +1,5 @@
 import { existsSync } from "fs";
+import { detect, resolveCommand } from "package-manager-detector";
 
 export function detectProjectType(): "typescript" | "javascript" {
     return existsSync("tsconfig.json") ? "typescript" : "javascript";
@@ -36,3 +37,22 @@ export function getEnvTemplate(): string {
   # MAILOSAUR_SERVER_ID=
   `;
 }
+
+export const getShortestInstallationCommand = async () => {
+  const packageManager = await detect();
+
+  if (!packageManager) {
+    throw new Error("No package manager detected");
+  }
+
+  const command = resolveCommand(packageManager.agent, "install", [
+    "@antiwork/shortest",
+    "--save-dev",
+  ]);
+
+  if (!command) {
+    throw new Error("Failed to resolve installation command");
+  }
+
+  return `${command.command} ${command.args.join(" ")}`;
+};

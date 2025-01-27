@@ -11,8 +11,8 @@ import {
   detectProjectType,
   getConfigTemplate,
   getEnvTemplate,
+  getShortestInstallationCommand,
 } from "../utils/initialize";
-import { getInstallationCommand } from "../utils/platform";
 
 process.removeAllListeners("warning");
 process.on("warning", (warning) => {
@@ -120,37 +120,41 @@ function isValidArg(arg: string): boolean {
 async function initCommand() {
   console.log(pc.blue("Setting up Shortest..."));
 
-  const packageManager = detectPackageManager();
   const projectType = detectProjectType();
   try {
     if (
       !existsSync(join(process.cwd(), "node_modules", "@antiwork/shortest"))
     ) {
       console.log("Installing @antiwork/shortest...");
-      const installCmd = await getInstallationCommand();
+      const installCmd = await getShortestInstallationCommand();
 
       execSync(installCmd, { stdio: "inherit" });
       console.log(pc.green("✔ Dependencies installed"));
     }
 
     const configPath = join(process.cwd(), "shortest.config.ts");
-    if (!existsSync(configPath)) {
       writeFileSync(configPath, getConfigTemplate(projectType));
       console.log(pc.green("✔ Configuration file created"));
-    }
 
     const gitignorePath = join(process.cwd(), ".gitignore");
+
     if (!existsSync(gitignorePath)) {
       writeFileSync(gitignorePath, ".shortest/\n");
-    } else if (!existsSync(".shortest/")) {
+      console.log(pc.green("✔ .gitignore file created"));
+
+    } else {
       appendFileSync(gitignorePath, "\n.shortest/\n");
+      console.log(pc.green("✔ .gitignore file updated"));
     }
-    console.log(pc.green("✔ .gitignore updated"));
 
     const envPath = join(process.cwd(), ".env.local");
     if (!existsSync(envPath)) {
       writeFileSync(envPath, getEnvTemplate());
-      console.log(pc.green("✔ Environment file generated"));
+      console.log(pc.green("✔ Environment file created"));
+    } else {
+      appendFileSync(envPath, getEnvTemplate());
+      console.log(pc.green("✔ Environment file updated"));
+
     }
 
     console.log(pc.green("\nInitialization complete! Next steps:"));
@@ -167,7 +171,7 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args[0] === "init") {
-    initCommand().catch(console.error);
+    await initCommand();  
     process.exit(0);
   }
 
