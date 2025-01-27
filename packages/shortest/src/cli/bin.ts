@@ -133,15 +133,14 @@ async function initCommand() {
     }
 
     const configPath = join(process.cwd(), "shortest.config.ts");
-      writeFileSync(configPath, getConfigTemplate(projectType));
-      console.log(pc.green("✔ Configuration file created"));
+    writeFileSync(configPath, getConfigTemplate(projectType));
+    console.log(pc.green("✔ Configuration file created"));
 
     const gitignorePath = join(process.cwd(), ".gitignore");
 
     if (!existsSync(gitignorePath)) {
       writeFileSync(gitignorePath, ".shortest/\n");
       console.log(pc.green("✔ .gitignore file created"));
-
     } else {
       appendFileSync(gitignorePath, "\n.shortest/\n");
       console.log(pc.green("✔ .gitignore file updated"));
@@ -154,7 +153,6 @@ async function initCommand() {
     } else {
       appendFileSync(envPath, getEnvTemplate());
       console.log(pc.green("✔ Environment file updated"));
-
     }
 
     console.log(pc.green("\nInitialization complete! Next steps:"));
@@ -171,7 +169,7 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args[0] === "init") {
-    await initCommand();  
+    await initCommand();
     process.exit(0);
   }
 
