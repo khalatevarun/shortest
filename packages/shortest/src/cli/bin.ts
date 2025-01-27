@@ -9,6 +9,7 @@ import { GitHubTool } from "../browser/integrations/github";
 import { TestRunner } from "../core/runner";
 import {
   detectPackageManager,
+  detectProjectType,
   getConfigTemplate,
   getEnvTemplate,
 } from "../utils/initialize";
@@ -120,7 +121,7 @@ async function initCommand() {
   console.log(pc.blue("Setting up Shortest..."));
 
   const packageManager = detectPackageManager();
-
+  const projectType = detectProjectType();
   try {
     if (
       !existsSync(join(process.cwd(), "node_modules", "@antiwork/shortest"))
@@ -138,7 +139,7 @@ async function initCommand() {
 
     const configPath = join(process.cwd(), "shortest.config.ts");
     if (!existsSync(configPath)) {
-      writeFileSync(configPath, getConfigTemplate());
+      writeFileSync(configPath, getConfigTemplate(projectType));
       console.log(pc.green("✔ Configuration file created"));
     }
 
