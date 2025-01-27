@@ -8,11 +8,11 @@ import { getConfig } from "..";
 import { GitHubTool } from "../browser/integrations/github";
 import { TestRunner } from "../core/runner";
 import {
-  detectPackageManager,
   detectProjectType,
   getConfigTemplate,
   getEnvTemplate,
 } from "../utils/initialize";
+import { getInstallationCommand } from "../utils/platform";
 
 process.removeAllListeners("warning");
 process.on("warning", (warning) => {
@@ -127,11 +127,7 @@ async function initCommand() {
       !existsSync(join(process.cwd(), "node_modules", "@antiwork/shortest"))
     ) {
       console.log("Installing @antiwork/shortest...");
-      const installCmd = {
-        npm: "npm install --save-dev @antiwork/shortest",
-        pnpm: "pnpm add -D @antiwork/shortest",
-        yarn: "yarn add -D @antiwork/shortest",
-      }[packageManager];
+      const installCmd = await getInstallationCommand();
 
       execSync(installCmd, { stdio: "inherit" });
       console.log(pc.green("✔ Dependencies installed"));
