@@ -4,6 +4,10 @@ import pc from "picocolors";
 import { getConfig } from "..";
 import { GitHubTool } from "../browser/integrations/github";
 import { TestRunner } from "../core/runner";
+import { appendFileSync, existsSync, writeFileSync } from "fs";
+import { join } from "path";
+import { execSync } from "child_process";
+import { detectPackageManager, getConfigTemplate, getEnvTemplate } from "../utils/initialize";
 
 process.removeAllListeners("warning");
 process.on("warning", (warning) => {
@@ -108,8 +112,65 @@ function isValidArg(arg: string): boolean {
   return false;
 }
 
+async function initCommand() {
+  console.log(pc.blue("Setting up Shortest..."));
+  
+  const packageManager = detectPackageManager();
+  
+  try {
+    // Install dependencies
+    if (!existsSync(join(process.cwd(), 'node_modules', '@antiwork/shortest'))) {
+      console.log("Installing @antiwork/shortest...");
+      const installCmd = {
+        npm: 'npm install --save-dev @antiwork/shortest',
+        pnpm: 'pnpm add -D @antiwork/shortest',
+        yarn: 'yarn add -D @antiwork/shortest'
+      }[packageManager];
+      
+      execSync(installCmd, { stdio: 'inherit' });
+      console.log(pc.green("✔ Dependencies installed"));
+    }
+
+    // Generate config file
+    const configPath = join(process.cwd(), 'shortest.config.ts');
+    if (!existsSync(configPath)) {
+      writeFileSync(configPath, getConfigTemplate());
+      console.log(pc.green("✔ Configuration file created"));
+    }
+
+    // Update gitignore
+    const gitignorePath = join(process.cwd(), '.gitignore');
+    if (!existsSync(gitignorePath)) {
+      writeFileSync(gitignorePath, '.shortest/\n');
+    } else if (!existsSync('.shortest/')) {
+      appendFileSync(gitignorePath, '\n.shortest/\n');
+    }
+    console.log(pc.green("✔ .gitignore updated"));
+
+    // Create env file
+    const envPath = join(process.cwd(), '.env.local');
+    if (!existsSync(envPath)) {
+      writeFileSync(envPath, getEnvTemplate());
+      console.log(pc.green("✔ Environment file generated"));
+    }
+
+    console.log(pc.green("\nInitialization complete! Next steps:"));
+    console.log("1. Add your ANTHROPIC_API_KEY to .env.local");
+    console.log("2. Create your first test file: my-test.test.ts");
+    console.log("3. Run tests with: shortest my-test.test.ts");
+  } catch (error) {
+    console.error(pc.red("Initialization failed:"), error);
+    process.exit(1);
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
+
+  if (args[0] === 'init') {
+    initCommand().catch(console.error);
+    process.exit(0);
+  }
 
   if (args.includes("--help") || args.includes("-h")) {
     showHelp();
