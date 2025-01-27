@@ -118,7 +118,6 @@ async function initCommand() {
   const packageManager = detectPackageManager();
   
   try {
-    // Install dependencies
     if (!existsSync(join(process.cwd(), 'node_modules', '@antiwork/shortest'))) {
       console.log("Installing @antiwork/shortest...");
       const installCmd = {
@@ -131,14 +130,12 @@ async function initCommand() {
       console.log(pc.green("✔ Dependencies installed"));
     }
 
-    // Generate config file
     const configPath = join(process.cwd(), 'shortest.config.ts');
     if (!existsSync(configPath)) {
       writeFileSync(configPath, getConfigTemplate());
       console.log(pc.green("✔ Configuration file created"));
     }
 
-    // Update gitignore
     const gitignorePath = join(process.cwd(), '.gitignore');
     if (!existsSync(gitignorePath)) {
       writeFileSync(gitignorePath, '.shortest/\n');
@@ -147,7 +144,6 @@ async function initCommand() {
     }
     console.log(pc.green("✔ .gitignore updated"));
 
-    // Create env file
     const envPath = join(process.cwd(), '.env.local');
     if (!existsSync(envPath)) {
       writeFileSync(envPath, getEnvTemplate());
