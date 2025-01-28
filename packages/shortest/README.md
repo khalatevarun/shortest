@@ -11,6 +11,14 @@ AI-powered natural language end-to-end testing framework.
 ### Installation
 
 ```bash
+npm install -D @antiwork/shortest
+# or
+pnpm add -D @antiwork/shortest
+```
+
+Add `.shortest/` to your `.gitignore` (where Shortest stores screenshots and caching of each test run):
+
+```bash
 echo ".shortest/" >> .gitignore
 ```
 
