@@ -3,11 +3,11 @@
 import { execSync } from "child_process";
 import { appendFileSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
+import { detect, resolveCommand } from "package-manager-detector";
 import pc from "picocolors";
 import { getConfig } from "..";
 import { GitHubTool } from "../browser/integrations/github";
 import { TestRunner } from "../core/runner";
-import { detect, resolveCommand } from "package-manager-detector";
 
 process.removeAllListeners("warning");
 process.on("warning", (warning) => {
@@ -116,7 +116,9 @@ export function detectProjectType(): "typescript" | "javascript" {
   return existsSync("tsconfig.json") ? "typescript" : "javascript";
 }
 
-export function getConfigTemplate(projectType: "typescript" | "javascript"): string {
+export function getConfigTemplate(
+  projectType: "typescript" | "javascript",
+): string {
   if (projectType === "typescript") {
     return `import type { ShortestConfig } from "@antiwork/shortest";
 
@@ -140,7 +142,7 @@ module.exports = {
 }
 
 export function getEnvTemplate(): string {
-return `# Shortest Environment Variables
+  return `# Shortest Environment Variables
 ANTHROPIC_API_KEY=
 
 # Optional Configuration
@@ -150,22 +152,22 @@ ANTHROPIC_API_KEY=
 }
 
 export const getShortestInstallationCommand = async () => {
-const packageManager = await detect();
+  const packageManager = await detect();
 
-if (!packageManager) {
-  throw new Error("No package manager detected");
-}
+  if (!packageManager) {
+    throw new Error("No package manager detected");
+  }
 
-const command = resolveCommand(packageManager.agent, "install", [
-  "@antiwork/shortest",
-  "--save-dev",
-]);
+  const command = resolveCommand(packageManager.agent, "install", [
+    "@antiwork/shortest",
+    "--save-dev",
+  ]);
 
-if (!command) {
-  throw new Error("Failed to resolve installation command");
-}
+  if (!command) {
+    throw new Error("Failed to resolve installation command");
+  }
 
-return `${command.command} ${command.args.join(" ")}`;
+  return `${command.command} ${command.args.join(" ")}`;
 };
 
 async function initCommand() {
