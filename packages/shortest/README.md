@@ -10,35 +10,6 @@ AI-powered natural language end-to-end testing framework.
 
 ### Installation
 
-#### Using `shortest init`
-
-You can use the `shortest init` command to streamline the setup process in a new or existing project.
-
-The `shortest init` command will:
-
-- Automatically install the `@antiwork/shortest` package as a dev dependency if it is not already installed.
-- Create a default `shortest.config.ts` file with boilerplate configuration.
-- Add `.shortest/` to `.gitignore`.
-- Generate a `.env.local` file with placeholders for required environment variables such as `ANTHROPIC_API_KEY`.
-
-To use the `shortest init` command, run:
-
-```sh
-npx @antiwork/shortest init
-```
-
-#### Manual Installation
-
-If you prefer to set up Shortest manually, follow these steps:
-
-```bash
-npm install -D @antiwork/shortest
-# or
-pnpm add -D @antiwork/shortest
-```
-
-Add `.shortest/` to your `.gitignore` (where Shortest stores screenshots and caching of each test run):
-
 ```bash
 echo ".shortest/" >> .gitignore
 ```
@@ -58,7 +29,7 @@ export default {
 } satisfies ShortestConfig;
 ```
 
-2. Write your test in files matching the test pattern defined in the config: `app/login.test.ts`
+2. Create test files using the pattern specified in the config: `app/login.test.ts`
 
 ```typescript
 import { shortest } from "@antiwork/shortest";
