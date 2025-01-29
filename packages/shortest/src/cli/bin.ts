@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-
 import { execSync } from "child_process";
+import * as fs from "fs";
 import { appendFileSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
 import { detect, resolveCommand } from "package-manager-detector";
@@ -151,11 +151,22 @@ ANTHROPIC_API_KEY=
 `;
 }
 
-export const getShortestInstallationCommand = async () => {
-  const packageManager = await detect();
+export const getPackageJson = async () => {
+  try {
+    return JSON.parse(
+      await fs.readFileSync(join(process.cwd(), "package.json"), "utf8"),
+    );
+  } catch {}
+};
 
-  if (!packageManager) {
-    throw new Error("No package manager detected");
+export const getInstallCmd = async () => {
+  const packageManager = (await detect()) || { agent: "npm", version: "" };
+  const packageJson = await getPackageJson();
+  if (packageJson?.packageManager) {
+    const [name] = packageJson.packageManager.split("@");
+    if (["pnpm", "yarn", "bun"].includes(name)) {
+      packageManager.agent = name;
+    }
   }
 
   const command = resolveCommand(packageManager.agent, "install", [
@@ -164,10 +175,13 @@ export const getShortestInstallationCommand = async () => {
   ]);
 
   if (!command) {
-    throw new Error("Failed to resolve installation command");
+    throw new Error(`Unsupported package manager: ${packageManager.agent}`);
   }
 
-  return `${command.command} ${command.args.join(" ")}`;
+  const cmdString = `${command.command} ${command.args.join(" ")}`;
+  console.log(pc.dim(cmdString));
+
+  return cmdString;
 };
 
 async function initCommand() {
@@ -175,12 +189,16 @@ async function initCommand() {
 
   const projectType = detectProjectType();
   try {
+    const packageJson = await getPackageJson();
     if (
-      !existsSync(join(process.cwd(), "node_modules", "@antiwork/shortest"))
+      packageJson?.dependencies?.["@antiwork/shortest"] ||
+      packageJson?.devDependencies?.["@antiwork/shortest"]
     ) {
+      console.log(pc.green("✔ Package already installed"));
+      return;
+    } else {
       console.log("Installing @antiwork/shortest...");
-      const installCmd = await getShortestInstallationCommand();
-
+      const installCmd = await getInstallCmd();
       execSync(installCmd, { stdio: "inherit" });
       console.log(pc.green("✔ Dependencies installed"));
     }
