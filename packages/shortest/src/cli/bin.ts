@@ -3,6 +3,7 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import { appendFileSync, existsSync, writeFileSync } from "fs";
 import { join } from "path";
+import { fileURLToPath } from "url";
 import { detect, resolveCommand } from "package-manager-detector";
 import pc from "picocolors";
 import { getConfig } from "..";
@@ -112,35 +113,6 @@ function isValidArg(arg: string): boolean {
   return false;
 }
 
-export function detectProjectType(): "typescript" | "javascript" {
-  return existsSync("tsconfig.json") ? "typescript" : "javascript";
-}
-
-export function getConfigTemplate(
-  projectType: "typescript" | "javascript",
-): string {
-  if (projectType === "typescript") {
-    return `import type { ShortestConfig } from "@antiwork/shortest";
-
-export default {
-  headless: false,
-  baseUrl: "http://localhost:3000",
-  testPattern: "**/*.test.ts",
-  anthropicKey: process.env.ANTHROPIC_API_KEY,
-} satisfies ShortestConfig;
-`;
-  } else {
-    return `/** @type {import('@antiwork/shortest').ShortestConfig} */
-module.exports = {
-  headless: false,
-  baseUrl: "http://localhost:3000",
-  testPattern: "**/*.test.js",
-  anthropicKey: process.env.ANTHROPIC_API_KEY,
-};
-`;
-  }
-}
-
 export function getEnvTemplate(): string {
   return `# Shortest Environment Variables
 ANTHROPIC_API_KEY=
@@ -187,7 +159,6 @@ export const getInstallCmd = async () => {
 async function initCommand() {
   console.log(pc.blue("Setting up Shortest..."));
 
-  const projectType = detectProjectType();
   try {
     const packageJson = await getPackageJson();
     if (
@@ -203,12 +174,18 @@ async function initCommand() {
       console.log(pc.green("✔ Dependencies installed"));
     }
 
-    const configPath = join(process.cwd(), "shortest.config.ts");
-    writeFileSync(configPath, getConfigTemplate(projectType));
-    console.log(pc.green("✔ Configuration file created"));
+    const CONFIG_FILENAME = "shortest.config.ts";
+    const configPath = join(process.cwd(), CONFIG_FILENAME);
+    const exampleConfigPath = join(
+      fileURLToPath(new URL("../../src", import.meta.url)),
+      `${CONFIG_FILENAME}.example`,
+    );
+
+    const exampleConfig = fs.readFileSync(exampleConfigPath, "utf8");
+    writeFileSync(configPath, exampleConfig);
+    console.log(pc.green(`✔ ${CONFIG_FILENAME} created`));
 
     const gitignorePath = join(process.cwd(), ".gitignore");
-
     if (!existsSync(gitignorePath)) {
       writeFileSync(gitignorePath, ".shortest/\n");
       console.log(pc.green("✔ .gitignore file created"));
