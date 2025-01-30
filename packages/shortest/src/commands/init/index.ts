@@ -6,7 +6,7 @@ import { detect, resolveCommand } from "package-manager-detector";
 import pc from "picocolors";
 import { CONFIG_FILENAME, ENV_LOCAL_FILENAME } from "../../constants";
 import { addToEnv } from "../../utils/add-to-env";
-import { addToGitIgnore } from "../../utils/add-to-gitignore";
+import { addToGitignore } from "../../utils/add-to-gitignore";
 
 export default async function main() {
   console.log(pc.blue("Setting up Shortest..."));
@@ -63,15 +63,20 @@ export default async function main() {
       );
     }
 
-    const result = await addToGitIgnore(process.cwd(), [
+    const resultGitignore = await addToGitignore(process.cwd(), [
       ".env*.local",
       ".shortest/",
     ]);
-    if (result.error) {
-      console.error(pc.red("Failed to update .gitignore"), result.error);
+    if (resultGitignore.error) {
+      console.error(
+        pc.red("Failed to update .gitignore"),
+        resultGitignore.error,
+      );
     } else {
       console.log(
-        pc.green(`✔ .gitignore ${result.wasCreated ? "created" : "updated"}`),
+        pc.green(
+          `✔ .gitignore ${resultGitignore.wasCreated ? "created" : "updated"}`,
+        ),
       );
     }
 

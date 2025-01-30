@@ -8,7 +8,7 @@ type GitIgnoreResult = {
   error?: Error;
 };
 
-export async function addToGitIgnore(
+export async function addToGitignore(
   path: string,
   values: string[],
 ): Promise<GitIgnoreResult> {
@@ -18,11 +18,11 @@ export async function addToGitIgnore(
   };
 
   try {
-    const gitIgnorePath = join(path, ".gitignore");
-    let gitIgnore = await readFile(gitIgnorePath, "utf8").catch(() => null);
-    const isNewFile = gitIgnore === null;
-    gitIgnore = gitIgnore ?? "";
-    const EOL = gitIgnore.includes("\r\n") ? "\r\n" : os.EOL;
+    const gitignorePath = join(path, ".gitignore");
+    let gitignore = await readFile(gitignorePath, "utf8").catch(() => null);
+    const isNewFile = gitignore === null;
+    gitignore = gitignore ?? "";
+    const EOL = gitignore.includes("\r\n") ? "\r\n" : os.EOL;
 
     const addValue = (content: string, value: string): string => {
       if (!content.split(EOL).includes(value)) {
@@ -34,7 +34,7 @@ export async function addToGitIgnore(
     };
 
     let modified = false;
-    let content = gitIgnore;
+    let content = gitignore;
     for (const value of values) {
       const newContent = addValue(content, value);
       if (newContent !== content) {
@@ -44,7 +44,7 @@ export async function addToGitIgnore(
     }
 
     if (modified) {
-      await writeFile(gitIgnorePath, content);
+      await writeFile(gitignorePath, content);
       result.wasCreated = isNewFile;
       result.wasUpdated = !isNewFile;
     }
