@@ -43,6 +43,7 @@ export class AIClient {
   }> {
     const maxRetries = 3;
     let attempts = 0;
+    const nonRetryableErrors = [500, 401, 403];
 
     while (attempts < maxRetries) {
       try {
@@ -53,7 +54,7 @@ export class AIClient {
           toolOutputCallback,
         );
       } catch (error: any) {
-        if (error.status === 401) {
+        if (nonRetryableErrors.includes(error.status)) {
           throw error;
         }
 
