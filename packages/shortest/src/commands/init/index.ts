@@ -1,11 +1,11 @@
 import { execSync } from "child_process";
-import { existsSync } from "node:fs";
-import { readFile, writeFile, appendFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { detect, resolveCommand } from "package-manager-detector";
 import pc from "picocolors";
-import { CONFIG_FILENAME } from "../../constants";
+import { CONFIG_FILENAME, ENV_LOCAL_FILENAME } from "../../constants";
+import { addToEnv } from "../../utils/add-to-env";
 import { addToGitIgnore } from "../../utils/add-to-gitignore";
 
 export default async function main() {
@@ -36,13 +36,31 @@ export default async function main() {
     await writeFile(configPath, exampleConfig, "utf8");
     console.log(pc.green(`✔ ${CONFIG_FILENAME} created`));
 
-    const envPath = join(process.cwd(), ".env.local");
-    if (!existsSync(envPath)) {
-      await writeFile(envPath, getEnvTemplate(), "utf8");
-      console.log(pc.green("✔ Environment file created"));
-    } else {
-      await appendFile(envPath, getEnvTemplate());
-      console.log(pc.green("✔ Environment file updated"));
+    const envResult = await addToEnv(process.cwd(), {
+      ANTHROPIC_API_KEY: {
+        value: "your_value_here",
+        comment: "Shortest variables",
+      },
+    });
+    if (envResult.error) {
+      console.error(
+        pc.red(`Failed to update ${ENV_LOCAL_FILENAME}`),
+        envResult.error,
+      );
+    } else if (envResult.added.length > 0) {
+      const added = envResult.added.join(", ");
+      const skipped = envResult.skipped.join(", ");
+      const detailsString = [
+        added ? `${added} added` : "",
+        skipped ? `${skipped} skipped` : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+      console.log(
+        pc.green(
+          `✔ ${ENV_LOCAL_FILENAME} ${envResult.wasCreated ? "created" : "updated"} (${detailsString})`,
+        ),
+      );
     }
 
     const result = await addToGitIgnore(process.cwd(), [
@@ -58,9 +76,9 @@ export default async function main() {
     }
 
     console.log(pc.green("\nInitialization complete! Next steps:"));
-    console.log("1. Add your ANTHROPIC_API_KEY to .env.local");
-    console.log("2. Create your first test file: my-test.test.ts");
-    console.log("3. Run tests with: shortest my-test.test.ts");
+    console.log(`1. Update ${ENV_LOCAL_FILENAME} with your values`);
+    console.log("2. Create your first test file: example.test.ts");
+    console.log("3. Run tests with: shortest example.test.ts");
   } catch (error) {
     console.error(pc.red("Initialization failed:"), error);
     process.exit(1);
@@ -74,16 +92,6 @@ export const getPackageJson = async () => {
     );
   } catch {}
 };
-
-export function getEnvTemplate(): string {
-  return `# Shortest Environment Variables
-ANTHROPIC_API_KEY=
-
-# Optional Configuration
-# MAILOSAUR_API_KEY=
-# MAILOSAUR_SERVER_ID=
-`;
-}
 
 export const getInstallCmd = async () => {
   const packageManager = (await detect()) || { agent: "npm", version: "" };

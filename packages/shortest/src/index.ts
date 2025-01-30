@@ -2,7 +2,7 @@ import { join } from "path";
 import dotenv from "dotenv";
 import { expect as jestExpect } from "expect";
 import { APIRequest } from "./browser/core/api-request";
-import { CONFIG_FILENAME } from "./constants";
+import { CONFIG_FILENAME, ENV_LOCAL_FILENAME } from "./constants";
 import { TestCompiler } from "./core/compiler";
 import {
   TestFunction,
@@ -43,7 +43,7 @@ if (!global.__shortest__) {
   global.expect = global.__shortest__.expect;
 
   dotenv.config({ path: join(process.cwd(), ".env") });
-  dotenv.config({ path: join(process.cwd(), ".env.local") });
+  dotenv.config({ path: join(process.cwd(), ENV_LOCAL_FILENAME) });
 }
 
 function validateConfig(config: Partial<ShortestConfig>) {
@@ -67,7 +67,7 @@ export async function initialize() {
   if (globalConfig) return globalConfig;
 
   dotenv.config({ path: join(process.cwd(), ".env") });
-  dotenv.config({ path: join(process.cwd(), ".env.local") });
+  dotenv.config({ path: join(process.cwd(), ENV_LOCAL_FILENAME) });
 
   const configFiles = [
     CONFIG_FILENAME,

@@ -2,7 +2,7 @@
 import pc from "picocolors";
 import { getConfig } from "..";
 import { GitHubTool } from "../browser/integrations/github";
-import { CONFIG_FILENAME } from "../constants";
+import { CONFIG_FILENAME, ENV_LOCAL_FILENAME } from "../constants";
 import { TestRunner } from "../core/runner";
 
 process.removeAllListeners("warning");
@@ -42,7 +42,7 @@ ${pc.bold("Options:")}
   --no-cache          Disable caching (storing browser actions between tests)
 
 ${pc.bold("Authentication:")}
-  --secret=<key>      GitHub TOTP secret key (or use .env.local)
+  --secret=<key>      GitHub TOTP secret key (or use ${ENV_LOCAL_FILENAME})
 
 ${pc.bold("Examples:")}
   ${pc.dim("# Run all tests")}
@@ -58,7 +58,7 @@ ${pc.bold("Examples:")}
   shortest --github-code --secret=<OTP_SECRET>
 
 ${pc.bold("Environment Setup:")}
-  Required variables in .env.local:
+  Required variables in ${ENV_LOCAL_FILENAME}:
   - ANTHROPIC_API_KEY     Required for AI test execution
   - GITHUB_TOTP_SECRET    Required for GitHub authentication
   - GITHUB_USERNAME       GitHub login credentials
