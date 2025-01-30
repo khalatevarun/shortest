@@ -1,10 +1,12 @@
 import { execSync } from "child_process";
-import { readFileSync, existsSync, writeFileSync, appendFileSync } from "fs";
+import { existsSync } from "node:fs";
+import { readFile, writeFile, appendFile } from "node:fs/promises";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { detect, resolveCommand } from "package-manager-detector";
 import pc from "picocolors";
 import { CONFIG_FILENAME } from "../../constants";
+import { addToGitIgnore } from "../../utils/add-to-gitignore";
 
 export default async function main() {
   console.log(pc.blue("Setting up Shortest..."));
@@ -30,26 +32,29 @@ export default async function main() {
       `${CONFIG_FILENAME}.example`,
     );
 
-    const exampleConfig = readFileSync(exampleConfigPath, "utf8");
-    writeFileSync(configPath, exampleConfig);
+    const exampleConfig = await readFile(exampleConfigPath, "utf8");
+    await writeFile(configPath, exampleConfig, "utf8");
     console.log(pc.green(`✔ ${CONFIG_FILENAME} created`));
-
-    const gitignorePath = join(process.cwd(), ".gitignore");
-    if (!existsSync(gitignorePath)) {
-      writeFileSync(gitignorePath, ".shortest/\n");
-      console.log(pc.green("✔ .gitignore file created"));
-    } else {
-      appendFileSync(gitignorePath, "\n.shortest/\n");
-      console.log(pc.green("✔ .gitignore file updated"));
-    }
 
     const envPath = join(process.cwd(), ".env.local");
     if (!existsSync(envPath)) {
-      writeFileSync(envPath, getEnvTemplate());
+      await writeFile(envPath, getEnvTemplate(), "utf8");
       console.log(pc.green("✔ Environment file created"));
     } else {
-      appendFileSync(envPath, getEnvTemplate());
+      await appendFile(envPath, getEnvTemplate());
       console.log(pc.green("✔ Environment file updated"));
+    }
+
+    const result = await addToGitIgnore(process.cwd(), [
+      ".env*.local",
+      ".shortest/",
+    ]);
+    if (result.error) {
+      console.error(pc.red("Failed to update .gitignore"), result.error);
+    } else {
+      console.log(
+        pc.green(`✔ .gitignore ${result.wasCreated ? "created" : "updated"}`),
+      );
     }
 
     console.log(pc.green("\nInitialization complete! Next steps:"));
@@ -65,7 +70,7 @@ export default async function main() {
 export const getPackageJson = async () => {
   try {
     return JSON.parse(
-      await readFileSync(join(process.cwd(), "package.json"), "utf8"),
+      await readFile(join(process.cwd(), "package.json"), "utf8"),
     );
   } catch {}
 };
