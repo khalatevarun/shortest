@@ -83,7 +83,7 @@ export default async function main() {
     console.log(pc.green("\nInitialization complete! Next steps:"));
     console.log(`1. Update ${ENV_LOCAL_FILENAME} with your values`);
     console.log("2. Create your first test file: example.test.ts");
-    console.log("3. Run tests with: shortest example.test.ts");
+    console.log("3. Run tests with: npx/pnpm test example.test.ts");
   } catch (error) {
     console.error(pc.red("Initialization failed:"), error);
     process.exit(1);
