@@ -4,6 +4,7 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import { detect, resolveCommand } from "package-manager-detector";
 import pc from "picocolors";
+import { CONFIG_FILENAME } from "../../constants";
 
 export default async function main() {
   console.log(pc.blue("Setting up Shortest..."));
@@ -23,7 +24,6 @@ export default async function main() {
       console.log(pc.green("✔ Dependencies installed"));
     }
 
-    const CONFIG_FILENAME = "shortest.config.ts";
     const configPath = join(process.cwd(), CONFIG_FILENAME);
     const exampleConfigPath = join(
       fileURLToPath(new URL("../../src", import.meta.url)),

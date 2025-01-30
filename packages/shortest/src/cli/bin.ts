@@ -2,6 +2,7 @@
 import pc from "picocolors";
 import { getConfig } from "..";
 import { GitHubTool } from "../browser/integrations/github";
+import { CONFIG_FILENAME } from "../constants";
 import { TestRunner } from "../core/runner";
 
 process.removeAllListeners("warning");
@@ -161,7 +162,7 @@ async function main() {
         console.error(pc.dim(error.message));
         console.error(
           pc.dim(
-            "\nMake sure you have a valid shortest.config.ts with all required fields:",
+            `\nMake sure you have a valid ${CONFIG_FILENAME} with all required fields:`,
           ),
         );
         console.error(pc.dim("  - headless: boolean"));
