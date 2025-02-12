@@ -145,6 +145,16 @@ async function main() {
   const cliTestPattern = args.find((arg) => !arg.startsWith("--"));
   const debugAI = args.includes("--debug-ai");
   const noCache = args.includes("--no-cache");
+  let testFile: string | undefined;
+  let lineNumber: number | undefined;
+
+  if (cliTestPattern?.includes(':')) {
+    const [file, line] = cliTestPattern.split(':');
+    testFile = file;
+    lineNumber = parseInt(line, 10);
+  } else {
+    testFile = cliTestPattern;
+  }
 
   try {
     const runner = new TestRunner(
@@ -158,8 +168,8 @@ async function main() {
     );
     await runner.initialize();
     const config = getConfig();
-    const testPattern = cliTestPattern || config.testPattern;
-    await runner.runTests(testPattern);
+    const testPattern = testFile || config.testPattern;
+    await runner.runTests(testPattern, lineNumber);
   } catch (error: any) {
     if (legacyOutputEnabled) {
       console.error(pc.red(`\n${error.name}:`), error.message);

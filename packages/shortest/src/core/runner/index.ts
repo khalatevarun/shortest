@@ -22,6 +22,7 @@ import {
 import { CacheEntry } from "../../types/cache";
 import { hashData } from "../../utils/crypto";
 import { TestCompiler } from "../compiler";
+import { readFileSync } from "fs";
 
 export const TokenMetricsSchema = z.object({
   input: z.number().default(0),
@@ -367,7 +368,41 @@ export class TestRunner {
     return { ...aiResult, tokenUsage: result.tokenUsage };
   }
 
-  private async executeTestFile(file: string) {
+  private filterTestsByLineNumber(tests: TestFunction[], file: string, lineNumber: number): TestFunction[] {
+    const fileContent = readFileSync(file, 'utf8');
+    const lines = fileContent.split('\n');
+  
+
+    return tests.filter(test => {
+      const testStartLine = lines.findIndex(line => {
+        const match = line.match(/shortest\((['"`])(.*?)\1/);
+        return match && match[2] === test.name;
+      });
+
+      if (testStartLine === -1) return false;
+
+      let bracketCount = 0;
+      let testEndLine = testStartLine;
+
+      for (let i = testStartLine; i < lines.length; i++) {
+        bracketCount += (lines[i].match(/{/g) || []).length;
+        bracketCount -= (lines[i].match(/}/g) || []).length;
+
+        if (bracketCount === 0 && lines[i].includes(');')) {
+          testEndLine = i;
+          break;
+        }
+      }
+      
+      const adjustedStartLine = testStartLine + 1;
+      const adjustedEndLine = testEndLine + 1;
+     
+
+      return lineNumber >= adjustedStartLine && lineNumber <= adjustedEndLine;
+    });
+  }
+
+  private async executeTestFile(file: string, lineNumber?: number) {
     try {
       const registry = (global as any).__shortest__.registry;
 
@@ -377,6 +412,18 @@ export class TestRunner {
       const filePathWithoutCwd = file.replace(this.cwd + "/", "");
       const compiledPath = await this.compiler.compileFile(file);
       await import(pathToFileURL(compiledPath).href);
+      let testsToRun = registry.currentFileTests;
+
+      if (lineNumber) {
+        testsToRun = this.filterTestsByLineNumber(registry.currentFileTests, file, lineNumber);
+        if (testsToRun.length === 0) {
+          this.reporter.error(
+            "Test Discovery",
+            `No tests found at line ${lineNumber} in ${filePathWithoutCwd}`
+          );
+          process.exit(1);
+        }
+      }
 
       let context;
       try {
@@ -453,7 +500,7 @@ export class TestRunner {
     }
   }
 
-  async runTests(pattern?: string) {
+  async runTests(pattern?: string, lineNumber?: number) {
     await this.initialize();
     const files = await this.findTestFiles(pattern);
 
@@ -467,7 +514,7 @@ export class TestRunner {
 
     this.reporter.onRunStart(files.length);
     for (const file of files) {
-      await this.executeTestFile(file);
+      await this.executeTestFile(file,lineNumber);
     }
 
     this.reporter.onRunEnd();
