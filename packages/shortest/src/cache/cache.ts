@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import path from "path";
-import { TestReporter } from "../core/runner/test-reporter";
-import { CacheEntry, CacheStore } from "../types/cache";
-import { hashData } from "../utils/crypto";
-import * as objects from "../utils/objects";
+import { TestReporter } from "@/core/runner/test-reporter";
+import { CacheEntry, CacheStore } from "@/types/cache";
+import { hashData } from "@/utils/crypto";
+import * as objects from "@/utils/objects";
 
 export class BaseCache<T extends CacheEntry> {
   private readonly CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -19,8 +19,8 @@ export class BaseCache<T extends CacheEntry> {
   protected lockAcquired = false;
   protected lockAcquireFailures = 0;
 
-  constructor(legacyOutputEnabled: boolean) {
-    this.testReporter = new TestReporter(legacyOutputEnabled);
+  constructor() {
+    this.testReporter = new TestReporter();
     this.cacheFile = path.join(process.cwd(), ".shortest", "cache.json");
     this.lockFile = path.join(process.cwd(), ".shortest", "cache.lock");
     this.ensureDirectory();
@@ -162,7 +162,7 @@ export class BaseCache<T extends CacheEntry> {
         this.write(cache);
       }
     } catch {
-      this.testReporter.error("Cache", "Failed to cleanup");
+      this.testReporter.error("Cache", "Failed to clean up");
     }
   }
 
