@@ -170,8 +170,8 @@ async function main() {
   let testFile: string | undefined;
   let lineNumber: number | undefined;
 
-  if (cliTestPattern?.includes(':')) {
-    const [file, line] = cliTestPattern.split(':');
+  if (cliTestPattern?.includes(":")) {
+    const [file, line] = cliTestPattern.split(":");
     testFile = file;
     lineNumber = parseInt(line, 10);
   } else {

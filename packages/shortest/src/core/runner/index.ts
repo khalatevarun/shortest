@@ -1,3 +1,4 @@
+import { readFileSync } from "fs";
 import { pathToFileURL } from "url";
 import Anthropic from "@anthropic-ai/sdk";
 import { glob } from "glob";
@@ -22,7 +23,6 @@ import {
 import { CacheEntry } from "@/types/cache";
 import { hashData } from "@/utils/crypto";
 import { getErrorDetails } from "@/utils/errors";
-import { readFileSync } from "fs";
 
 export const TokenMetricsSchema = z.object({
   input: z.number().default(0),
@@ -359,13 +359,16 @@ export class TestRunner {
     return { ...aiResult, tokenUsage: result.tokenUsage };
   }
 
-  private filterTestsByLineNumber(tests: TestFunction[], file: string, lineNumber: number): TestFunction[] {
-    const fileContent = readFileSync(file, 'utf8');
-    const lines = fileContent.split('\n');
-  
+  private filterTestsByLineNumber(
+    tests: TestFunction[],
+    file: string,
+    lineNumber: number,
+  ): TestFunction[] {
+    const fileContent = readFileSync(file, "utf8");
+    const lines = fileContent.split("\n");
 
-    return tests.filter(test => {
-      const testStartLine = lines.findIndex(line => {
+    return tests.filter((test) => {
+      const testStartLine = lines.findIndex((line) => {
         const match = line.match(/shortest\((['"`])(.*?)\1/);
         return match && match[2] === test.name;
       });
@@ -379,15 +382,14 @@ export class TestRunner {
         bracketCount += (lines[i].match(/{/g) || []).length;
         bracketCount -= (lines[i].match(/}/g) || []).length;
 
-        if (bracketCount === 0 && lines[i].includes(');')) {
+        if (bracketCount === 0 && lines[i].includes(");")) {
           testEndLine = i;
           break;
         }
       }
-      
+
       const adjustedStartLine = testStartLine + 1;
       const adjustedEndLine = testEndLine + 1;
-     
 
       return lineNumber >= adjustedStartLine && lineNumber <= adjustedEndLine;
     });
@@ -409,11 +411,15 @@ export class TestRunner {
       let testsToRun = registry.currentFileTests;
 
       if (lineNumber) {
-        testsToRun = this.filterTestsByLineNumber(registry.currentFileTests, file, lineNumber);
+        testsToRun = this.filterTestsByLineNumber(
+          registry.currentFileTests,
+          file,
+          lineNumber,
+        );
         if (testsToRun.length === 0) {
           this.reporter.error(
             "Test Discovery",
-            `No tests found at line ${lineNumber} in ${filePathWithoutCwd}`
+            `No tests found at line ${lineNumber} in ${filePathWithoutCwd}`,
           );
           process.exit(1);
         }
@@ -505,7 +511,7 @@ export class TestRunner {
 
     this.reporter.onRunStart(files.length);
     for (const file of files) {
-      await this.executeTestFile(file,lineNumber);
+      await this.executeTestFile(file, lineNumber);
     }
 
     this.reporter.onRunEnd();
