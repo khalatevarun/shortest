@@ -442,10 +442,7 @@ export class TestRunner {
           await hook(testContext);
         }
 
-        this.reporter.onFileStart(
-          filePathWithoutCwd,
-          testsToRun.length,
-        );
+        this.reporter.onFileStart(filePathWithoutCwd, testsToRun.length);
 
         // Execute tests in order they were defined
         this.log.info(`Running ${testsToRun.length} test(s)`);
