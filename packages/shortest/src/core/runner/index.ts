@@ -444,12 +444,12 @@ export class TestRunner {
 
         this.reporter.onFileStart(
           filePathWithoutCwd,
-          registry.currentFileTests.length,
+          testsToRun.length,
         );
 
         // Execute tests in order they were defined
-        this.log.info(`Running ${registry.currentFileTests.length} test(s)`);
-        for (const test of registry.currentFileTests) {
+        this.log.info(`Running ${testsToRun.length} test(s)`);
+        for (const test of testsToRun) {
           // Execute beforeEach hooks with shared context
           for (const hook of registry.beforeEachFns) {
             await hook(testContext);
