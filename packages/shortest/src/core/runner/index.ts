@@ -24,7 +24,7 @@ import { CacheEntry } from "@/types/cache";
 import { hashData } from "@/utils/crypto";
 import { getErrorDetails } from "@/utils/errors";
 import { parse } from "acorn";
-import * as walk from "acorn-walk";
+import { simple as walkSimple } from "acorn-walk";
 
 export const TokenMetricsSchema = z.object({
   input: z.number().default(0),
@@ -376,7 +376,7 @@ export class TestRunner {
 
     const testLocations: { [testName: string]: { start: number; end: number } } = {};
 
-    walk.simple(ast, {
+    walkSimple(ast, {
       CallExpression(node: any) {
 
         if (
@@ -398,18 +398,13 @@ export class TestRunner {
           };
 
           
-          walk.simple(ast, {
+          walkSimple(ast, {
             CallExpression(chainNode: any) {
               if (
                 chainNode.loc.start.line === node.loc.start.line && // Same starting line as shortest()
                 chainNode.callee.type === "MemberExpression" && 
                 chainNode.callee.property.name === "expect"
               ) {
-                console.log("Found chain node:", {
-                  start: chainNode.loc.start.line,
-                  end: chainNode.loc.end.line
-                });
-                
                 // Update end line if this chain node ends later
                 if (chainNode.loc.end.line > largestChain.end!) {
                   largestChain.end = chainNode.loc.end.line;
@@ -433,6 +428,9 @@ export class TestRunner {
         return false;
       }
       const isInRange = lineNumber >= location.start && lineNumber <= location.end;
+      if (isInRange) {
+        console.log(`Test found for line number ${lineNumber}: ${test.name}`);
+      }
   
       return isInRange;
     });
