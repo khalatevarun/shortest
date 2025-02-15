@@ -23,6 +23,8 @@ import {
 import { CacheEntry } from "@/types/cache";
 import { hashData } from "@/utils/crypto";
 import { getErrorDetails } from "@/utils/errors";
+import { parse } from "acorn";
+import * as walk from "acorn-walk";
 
 export const TokenMetricsSchema = z.object({
   input: z.number().default(0),
@@ -358,42 +360,86 @@ export class TestRunner {
     }
     return { ...aiResult, tokenUsage: result.tokenUsage };
   }
-
+  
   private filterTestsByLineNumber(
     tests: TestFunction[],
     file: string,
     lineNumber: number,
   ): TestFunction[] {
+    
     const fileContent = readFileSync(file, "utf8");
-    const lines = fileContent.split("\n");
-
-    return tests.filter((test) => {
-      const testStartLine = lines.findIndex((line) => {
-        const match = line.match(/shortest\((['"`])(.*?)\1/);
-        return match && match[2] === test.name;
-      });
-
-      if (testStartLine === -1) return false;
-
-      let bracketCount = 0;
-      let testEndLine = testStartLine;
-
-      for (let i = testStartLine; i < lines.length; i++) {
-        bracketCount += (lines[i].match(/{/g) || []).length;
-        bracketCount -= (lines[i].match(/}/g) || []).length;
-
-        if (bracketCount === 0 && lines[i].includes(");")) {
-          testEndLine = i;
-          break;
-        }
-      }
-
-      const adjustedStartLine = testStartLine + 1;
-      const adjustedEndLine = testEndLine + 1;
-
-      return lineNumber >= adjustedStartLine && lineNumber <= adjustedEndLine;
+    const ast = parse(fileContent, {
+      sourceType: "module",
+      ecmaVersion: "latest",
+      locations: true,
     });
+
+    const testLocations: { [testName: string]: { start: number; end: number } } = {};
+
+    walk.simple(ast, {
+      CallExpression(node: any) {
+
+        if (
+          node.callee.type === "Identifier" &&
+          node.callee.name === "shortest"
+        ) {
+          
+          const testNameArg = node.arguments[0];
+          if (!testNameArg || testNameArg.type !== "Literal" || typeof testNameArg.value !== "string") {
+            return;
+          }
+
+          const testName = testNameArg.value;
+          
+          // Find the largest chain containing this shortest() call
+          let largestChain = {
+            start: node.loc?.start.line,
+            end: node.loc?.end.line
+          };
+
+          
+          walk.simple(ast, {
+            CallExpression(chainNode: any) {
+              if (
+                chainNode.loc.start.line === node.loc.start.line && // Same starting line as shortest()
+                chainNode.callee.type === "MemberExpression" && 
+                chainNode.callee.property.name === "expect"
+              ) {
+                console.log("Found chain node:", {
+                  start: chainNode.loc.start.line,
+                  end: chainNode.loc.end.line
+                });
+                
+                // Update end line if this chain node ends later
+                if (chainNode.loc.end.line > largestChain.end!) {
+                  largestChain.end = chainNode.loc.end.line;
+                }
+              }
+            }
+          });
+
+
+          if (largestChain.start !== undefined && largestChain.end !== undefined) {
+            testLocations[testName] = largestChain;
+          }
+        }
+      },
+    });
+
+
+    const filteredTests = tests.filter((test) => {
+      const location = testLocations[test.name];
+      if (!location) {
+        return false;
+      }
+      const isInRange = lineNumber >= location.start && lineNumber <= location.end;
+  
+      return isInRange;
+    });
+
+    return filteredTests;
   }
+  
 
   private async executeTestFile(file: string, lineNumber?: number) {
     try {
