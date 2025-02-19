@@ -1,6 +1,8 @@
 import { readFileSync } from "fs";
 import { pathToFileURL } from "url";
 import Anthropic from "@anthropic-ai/sdk";
+import { parse } from "acorn";
+import { simple as walkSimple } from "acorn-walk";
 import { glob } from "glob";
 import { APIRequest, BrowserContext } from "playwright";
 import * as playwright from "playwright";
@@ -23,8 +25,6 @@ import {
 import { CacheEntry } from "@/types/cache";
 import { hashData } from "@/utils/crypto";
 import { getErrorDetails } from "@/utils/errors";
-import { parse } from "acorn";
-import { simple as walkSimple } from "acorn-walk";
 
 export const TokenMetricsSchema = z.object({
   input: z.number().default(0),
@@ -360,13 +360,12 @@ export class TestRunner {
     }
     return { ...aiResult, tokenUsage: result.tokenUsage };
   }
-  
+
   private filterTestsByLineNumber(
     tests: TestFunction[],
     file: string,
     lineNumber: number,
   ): TestFunction[] {
-    
     const fileContent = readFileSync(file, "utf8");
     const ast = parse(fileContent, {
       sourceType: "module",
@@ -374,35 +373,38 @@ export class TestRunner {
       locations: true,
     });
 
-    const testLocations: { [testName: string]: { start: number; end: number } } = {};
+    const testLocations: {
+      [testName: string]: { start: number; end: number };
+    } = {};
 
     walkSimple(ast, {
       CallExpression(node: any) {
-
         if (
           node.callee.type === "Identifier" &&
           node.callee.name === "shortest"
         ) {
-          
           const testNameArg = node.arguments[0];
-          if (!testNameArg || testNameArg.type !== "Literal" || typeof testNameArg.value !== "string") {
+          if (
+            !testNameArg ||
+            testNameArg.type !== "Literal" ||
+            typeof testNameArg.value !== "string"
+          ) {
             return;
           }
 
           const testName = testNameArg.value;
-          
+
           // Find the largest chain containing this shortest() call
           let largestChain = {
             start: node.loc?.start.line,
-            end: node.loc?.end.line
+            end: node.loc?.end.line,
           };
 
-          
           walkSimple(ast, {
             CallExpression(chainNode: any) {
               if (
                 chainNode.loc.start.line === node.loc.start.line && // Same starting line as shortest()
-                chainNode.callee.type === "MemberExpression" && 
+                chainNode.callee.type === "MemberExpression" &&
                 chainNode.callee.property.name === "expect"
               ) {
                 // Update end line if this chain node ends later
@@ -410,34 +412,35 @@ export class TestRunner {
                   largestChain.end = chainNode.loc.end.line;
                 }
               }
-            }
+            },
           });
 
-
-          if (largestChain.start !== undefined && largestChain.end !== undefined) {
+          if (
+            largestChain.start !== undefined &&
+            largestChain.end !== undefined
+          ) {
             testLocations[testName] = largestChain;
           }
         }
       },
     });
 
-
     const filteredTests = tests.filter((test) => {
       const location = testLocations[test.name];
       if (!location) {
         return false;
       }
-      const isInRange = lineNumber >= location.start && lineNumber <= location.end;
+      const isInRange =
+        lineNumber >= location.start && lineNumber <= location.end;
       if (isInRange) {
         console.log(`Test found for line number ${lineNumber}: ${test.name}`);
       }
-  
+
       return isInRange;
     });
 
     return filteredTests;
   }
-  
 
   private async executeTestFile(file: string, lineNumber?: number) {
     try {
