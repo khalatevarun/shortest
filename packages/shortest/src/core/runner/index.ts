@@ -1,7 +1,4 @@
-import { readFileSync } from "fs";
 import { pathToFileURL } from "url";
-import { parse } from "acorn";
-import { simple as walkSimple } from "acorn-walk";
 import { glob } from "glob";
 import { APIRequest, BrowserContext } from "playwright";
 import * as playwright from "playwright";
@@ -12,6 +9,10 @@ import { BrowserTool } from "@/browser/core/browser-tool";
 import { BrowserManager } from "@/browser/manager";
 import { TestCache } from "@/cache";
 import { TestCompiler } from "@/core/compiler";
+import {
+  EXPRESSION_PLACEHOLDER,
+  parseShortestTestFile,
+} from "@/core/runner/test-file-parser";
 import { TestReporter } from "@/core/runner/test-reporter";
 import { getLogger, Log } from "@/log";
 import {
@@ -284,83 +285,44 @@ export class TestRunner {
     };
   }
 
-  private filterTestsByLineNumber(
+  private async filterTestsByLineNumber(
     tests: TestFunction[],
     file: string,
     lineNumber: number,
-  ): TestFunction[] {
-    const fileContent = readFileSync(file, "utf8");
-    const ast = parse(fileContent, {
-      sourceType: "module",
-      ecmaVersion: "latest",
-      locations: true,
-    });
-
-    const testLocations: {
-      [testName: string]: { start: number; end: number };
-    } = {};
-
-    walkSimple(ast, {
-      CallExpression(node: any) {
-        if (
-          node.callee.type === "Identifier" &&
-          node.callee.name === "shortest"
-        ) {
-          const testNameArg = node.arguments[0];
-          if (
-            !testNameArg ||
-            testNameArg.type !== "Literal" ||
-            typeof testNameArg.value !== "string"
-          ) {
-            return;
-          }
-
-          const testName = testNameArg.value;
-
-          // Find the largest chain containing this shortest() call
-          let largestChain = {
-            start: node.loc?.start.line,
-            end: node.loc?.end.line,
-          };
-
-          walkSimple(ast, {
-            CallExpression(chainNode: any) {
-              if (
-                chainNode.loc.start.line === node.loc.start.line && // Same starting line as shortest()
-                chainNode.callee.type === "MemberExpression" &&
-                chainNode.callee.property.name === "expect"
-              ) {
-                // Update end line if this chain node ends later
-                if (chainNode.loc.end.line > largestChain.end!) {
-                  largestChain.end = chainNode.loc.end.line;
-                }
-              }
-            },
-          });
-
-          if (
-            largestChain.start !== undefined &&
-            largestChain.end !== undefined
-          ) {
-            testLocations[testName] = largestChain;
-          }
-        }
-      },
-    });
+  ): Promise<TestFunction[]> {
+    const testLocations = parseShortestTestFile(file);
+    const escapeRegex = (str: string) =>
+      str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     const filteredTests = tests.filter((test) => {
-      const location = testLocations[test.name];
-      if (!location) {
-        return false;
-      }
-      const isInRange =
-        lineNumber >= location.start && lineNumber <= location.end;
-      if (isInRange) {
-        this.log.trace(
-          `Test found for line number ${lineNumber}: ${test.name}`,
-        );
+      const testNameNormalized = test.name.trim();
+      let testLocation = testLocations.find(
+        (location) => location.testName === testNameNormalized,
+      );
+
+      if (!testLocation) {
+        testLocation = testLocations.find((location) => {
+          const TEMP_TOKEN = "##PLACEHOLDER##";
+          let pattern = location.testName.replace(
+            new RegExp(escapeRegex(EXPRESSION_PLACEHOLDER), "g"),
+            TEMP_TOKEN,
+          );
+
+          pattern = escapeRegex(pattern);
+          pattern = pattern.replace(new RegExp(TEMP_TOKEN, "g"), ".*");
+          const regex = new RegExp(`^${pattern}$`);
+
+          return regex.test(testNameNormalized);
+        });
       }
 
+      if (!testLocation) {
+        return false;
+      }
+
+      const isInRange =
+        lineNumber >= testLocation.startLine &&
+        lineNumber <= testLocation.endLine;
       return isInRange;
     });
 
@@ -376,12 +338,13 @@ export class TestRunner {
 
       const filePathWithoutCwd = file.replace(this.cwd + "/", "");
       const compiledPath = await this.compiler.compileFile(file);
+
       this.log.trace("Importing compiled file", { compiledPath });
       await import(pathToFileURL(compiledPath).href);
       let testsToRun = registry.currentFileTests;
 
       if (lineNumber) {
-        testsToRun = this.filterTestsByLineNumber(
+        testsToRun = await this.filterTestsByLineNumber(
           registry.currentFileTests,
           file,
           lineNumber,
