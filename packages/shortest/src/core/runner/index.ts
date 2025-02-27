@@ -369,6 +369,7 @@ export class TestRunner {
 
   private async executeTestFile(file: string, lineNumber?: number) {
     try {
+      this.log.trace("Executing test file", { file, lineNumber });
       const registry = (global as any).__shortest__.registry;
       registry.tests.clear();
       registry.currentFileTests = [];
@@ -468,6 +469,7 @@ export class TestRunner {
       cwd: this.cwd,
       absolute: true,
     });
+    this.log.trace("Found test files", { files });
 
     if (files.length === 0) {
       this.reporter.error(
