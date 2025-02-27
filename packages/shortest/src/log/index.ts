@@ -18,10 +18,11 @@
  * @private
  */
 
-import { LogConfig } from "./config";
-import { Log } from "./log";
+import { LogConfig } from "@/log/config";
+import { Log } from "@/log/log";
+
 export { Log };
-export { LogGroup } from "./group";
+export { LogGroup } from "@/log/group";
 
 let instance: Log | null = null;
 
@@ -36,10 +37,10 @@ let instance: Log | null = null;
  * const log = getLogger({ level: "debug", format: "terminal" });
  * ```
  */
-export function getLogger(config?: Partial<LogConfig>): Log {
+export const getLogger = (config?: Partial<LogConfig>): Log => {
   if (instance) {
     return instance;
   }
   instance = new Log(config);
   return instance;
-}
+};

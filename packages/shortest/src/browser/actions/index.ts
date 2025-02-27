@@ -1,5 +1,5 @@
 import { Page } from "playwright";
-import { ToolError } from "../core";
+import { ToolError } from "@/utils/errors";
 
 export const keyboardShortcuts: Record<string, string | string[]> = {
   "ctrl+l": ["Control", "l"],
@@ -27,11 +27,11 @@ export const scaleRatio = {
   y: 32 / 24,
 };
 
-export async function mouseMove(
+export const mouseMove = async (
   page: Page,
   x: number,
   y: number,
-): Promise<void> {
+): Promise<void> => {
   if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0) {
     throw new ToolError("Coordinates must be non-negative integers");
   }
@@ -61,64 +61,77 @@ export async function mouseMove(
   );
 
   await page.waitForTimeout(50);
-}
+};
 
-export async function click(page: Page, x: number, y: number): Promise<void> {
+export const click = async (
+  page: Page,
+  x: number,
+  y: number,
+): Promise<void> => {
   const scaledX = Math.round(x * scaleRatio.x);
   const scaledY = Math.round(y * scaleRatio.y);
 
   await mouseMove(page, x, y);
-  await page.mouse.click(scaledX, scaledY);
-  await showClickAnimation(page, "left");
-}
+  const animationPromise = showClickAnimation(page, "left");
 
-export async function dragMouse(
+  await Promise.all([
+    page.mouse.click(scaledX, scaledY, { delay: 200 }), // delay to match animation duration
+    animationPromise,
+  ]);
+};
+
+export const dragMouse = async (
   page: Page,
   x: number,
   y: number,
-): Promise<void> {
+): Promise<void> => {
   const scaledX = Math.round(x * scaleRatio.x);
   const scaledY = Math.round(y * scaleRatio.y);
 
   await page.mouse.down();
   await page.mouse.move(scaledX, scaledY);
   await page.mouse.up();
-}
+};
 
-export async function showClickAnimation(
+export const showClickAnimation = async (
   page: Page,
   type: "left" | "right" | "double" = "left",
-): Promise<void> {
-  await page.evaluate((clickType) => {
-    const cursor = document.getElementById("ai-cursor");
-    if (cursor) {
-      cursor.classList.add("clicking");
+) =>
+  page.evaluate(
+    (clickType) =>
+      new Promise<void>((resolve) => {
+        const cursor = document.getElementById("ai-cursor");
+        if (!cursor) return resolve(undefined);
 
-      switch (clickType) {
-        case "double":
-          cursor.style.transform = "translate(-50%, -50%) scale(0.7)";
-          cursor.style.backgroundColor = "rgba(255, 0, 0, 0.5)";
-          break;
-        case "right":
-          cursor.style.borderColor = "blue";
-          break;
-        default:
-          cursor.style.transform = "translate(-50%, -50%) scale(0.8)";
-      }
+        cursor.classList.add("clicking");
+        switch (clickType) {
+          case "double":
+            cursor.style.transform = "translate(-50%, -50%) scale(0.7)";
+            cursor.style.backgroundColor = "rgba(255, 0, 0, 0.5)";
+            break;
+          case "right":
+            cursor.style.borderColor = "blue";
+            break;
+          default:
+            cursor.style.transform = "translate(-50%, -50%) scale(0.8)";
+        }
 
-      setTimeout(() => {
-        cursor.classList.remove("clicking");
-        cursor.style.transform = "translate(-50%, -50%) scale(1)";
-        cursor.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
-        cursor.style.borderColor = "red";
-      }, 200);
-    }
-  }, type);
-}
+        setTimeout(() => {
+          cursor.classList.remove("clicking");
+          cursor.style.transform = "translate(-50%, -50%) scale(1)";
+          cursor.style.backgroundColor = "rgba(255, 0, 0, 0.2)";
+          cursor.style.borderColor = "red";
+          resolve(undefined);
+        }, 200);
+      }),
+    type,
+  );
 
-export async function getCursorPosition(page: Page): Promise<[number, number]> {
-  const position = await page.evaluate(() => {
-    return window.cursorPosition || { x: 0, y: 0 };
-  });
+export const getCursorPosition = async (
+  page: Page,
+): Promise<[number, number]> => {
+  const position = await page.evaluate(
+    () => window.cursorPosition || { x: 0, y: 0 },
+  );
   return [position.x, position.y];
-}
+};

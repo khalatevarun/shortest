@@ -10,24 +10,7 @@ export interface AssertionError extends Error {
   };
 }
 
-export class CallbackError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "CallbackError";
-  }
-}
-
-export class AssertionCallbackError extends CallbackError {
-  constructor(
-    message: string,
-    public actual?: any,
-    public expected?: any,
-  ) {
-    super(message);
-    this.name = "AssertionCallbackError";
-  }
-}
-
+// eslint-disable-next-line zod/require-zod-schema-types
 export type TestContext = {
   page: Page;
   browser: Browser;
@@ -42,6 +25,7 @@ export type TestContext = {
   currentStepIndex?: number;
 };
 
+// eslint-disable-next-line zod/require-zod-schema-types
 export type TestHookFunction = (context: TestContext) => Promise<void>;
 
 export interface TestFunction {
@@ -60,6 +44,7 @@ export interface TestFunction {
   directExecution?: boolean;
 }
 
+// eslint-disable-next-line zod/require-zod-schema-types
 export type TestChain = {
   expect(fn: (context: TestContext) => Promise<void>): TestChain;
   expect(description: string): TestChain;
@@ -76,6 +61,7 @@ export type TestChain = {
   after(fn: (context: TestContext) => void | Promise<void>): TestChain;
 };
 
+// eslint-disable-next-line zod/require-zod-schema-types
 export type TestAPI = {
   (fn: (context: TestContext) => Promise<void>): TestChain;
   (name: string): TestChain;
@@ -100,6 +86,7 @@ export type TestAPI = {
   afterEach(name: string, fn: (context: TestContext) => Promise<void>): void;
 };
 
+// eslint-disable-next-line zod/require-zod-schema-types
 export type TestRegistry = {
   tests: Map<string, TestFunction[]>;
   currentFileTests: TestFunction[];

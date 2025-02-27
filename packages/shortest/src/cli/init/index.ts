@@ -4,9 +4,11 @@ import { join } from "path";
 import { fileURLToPath } from "url";
 import { detect, resolveCommand } from "package-manager-detector";
 import pc from "picocolors";
+import { DOT_SHORTEST_DIR_NAME } from "@/cache";
 import { CONFIG_FILENAME, ENV_LOCAL_FILENAME } from "@/constants";
 import { addToEnv } from "@/utils/add-to-env";
 import { addToGitignore } from "@/utils/add-to-gitignore";
+import { ShortestError } from "@/utils/errors";
 
 export default async function main() {
   console.log(pc.blue("Setting up Shortest..."));
@@ -19,12 +21,11 @@ export default async function main() {
     ) {
       console.log(pc.green("✔ Package already installed"));
       return;
-    } else {
-      console.log("Installing @antiwork/shortest...");
-      const installCmd = await getInstallCmd();
-      execSync(installCmd, { stdio: "inherit" });
-      console.log(pc.green("✔ Dependencies installed"));
     }
+    console.log("Installing @antiwork/shortest...");
+    const installCmd = await getInstallCmd();
+    execSync(installCmd, { stdio: "inherit" });
+    console.log(pc.green("✔ Dependencies installed"));
 
     const configPath = join(process.cwd(), CONFIG_FILENAME);
     const exampleConfigPath = join(
@@ -65,7 +66,7 @@ export default async function main() {
 
     const resultGitignore = await addToGitignore(process.cwd(), [
       ".env*.local",
-      ".shortest/",
+      `${DOT_SHORTEST_DIR_NAME}/`,
     ]);
     if (resultGitignore.error) {
       console.error(
@@ -115,7 +116,9 @@ export const getInstallCmd = async () => {
   );
 
   if (!command) {
-    throw new Error(`Unsupported package manager: ${packageManager.agent}`);
+    throw new ShortestError(
+      `Unsupported package manager: ${packageManager.agent}`,
+    );
   }
 
   const cmdString = `${command.command} ${command.args.join(" ")}`;

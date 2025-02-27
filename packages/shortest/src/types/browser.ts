@@ -1,4 +1,4 @@
-import { TestContext, Page } from "./test";
+import { TestContext, Page } from "@/types/test";
 
 export interface BrowserToolInterface {
   waitForSelector(
@@ -32,6 +32,7 @@ export enum BrowserActionEnum {
   CheckMail = "check_email",
 }
 
+// eslint-disable-next-line zod/require-zod-schema-types
 export type BrowserAction = `${BrowserActionEnum}`;
 
 export interface BrowserToolOptions {
@@ -83,6 +84,7 @@ export interface BrowserToolConfig {
   testContext?: TestContext;
 }
 
+// eslint-disable-next-line zod/require-zod-schema-types
 export type BetaToolType =
   | "computer_20241022"
   | "text_editor_20241022"

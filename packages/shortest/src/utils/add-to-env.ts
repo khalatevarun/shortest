@@ -3,6 +3,7 @@ import os from "os";
 import { join } from "path";
 import { ENV_LOCAL_FILENAME } from "@/constants";
 
+// eslint-disable-next-line zod/require-zod-schema-types
 type EnvResult = {
   added: string[];
   skipped: string[];
@@ -10,10 +11,10 @@ type EnvResult = {
   error?: Error;
 };
 
-export async function addToEnv(
+export const addToEnv = async (
   path: string,
   entries: Record<string, { value: string; comment?: string }>,
-): Promise<EnvResult> {
+): Promise<EnvResult> => {
   const result: EnvResult = {
     added: [],
     skipped: [],
@@ -24,7 +25,7 @@ export async function addToEnv(
     const envPath = join(path, ENV_LOCAL_FILENAME);
     let envContent = await readFile(envPath, "utf8").catch(() => null);
     result.wasCreated = envContent === null;
-    envContent = envContent ?? "";
+    envContent ??= "";
     const EOL = envContent.includes("\r\n") ? "\r\n" : os.EOL;
 
     const existingEntries = new Map(
@@ -60,4 +61,4 @@ export async function addToEnv(
   }
 
   return result;
-}
+};

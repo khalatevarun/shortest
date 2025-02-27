@@ -8,6 +8,7 @@ import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
 
+// eslint-disable-next-line zod/require-zod-schema-types
 type ToasterToast = ToastProps & {
   id: string;
   title?: React.ReactNode;
@@ -15,6 +16,7 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement;
 };
 
+// eslint-disable-next-line zod/require-zod-schema-types
 type ActionTypes = {
   ADD_TOAST: "ADD_TOAST";
   UPDATE_TOAST: "UPDATE_TOAST";
@@ -24,11 +26,12 @@ type ActionTypes = {
 
 let count = 0;
 
-function genId() {
+const genId = () => {
   count = (count + 1) % Number.MAX_SAFE_INTEGER;
   return count.toString();
-}
+};
 
+// eslint-disable-next-line zod/require-zod-schema-types
 type Action =
   | {
       type: ActionTypes["ADD_TOAST"];
@@ -128,16 +131,17 @@ const listeners: Array<(state: State) => void> = [];
 
 let memoryState: State = { toasts: [] };
 
-function dispatch(action: Action) {
+const dispatch = (action: Action) => {
   memoryState = reducer(memoryState, action);
   listeners.forEach((listener) => {
     listener(memoryState);
   });
-}
+};
 
+// eslint-disable-next-line zod/require-zod-schema-types
 type Toast = Omit<ToasterToast, "id">;
 
-function toast({ ...props }: Toast) {
+const toast = ({ ...props }: Toast) => {
   const id = genId();
 
   const update = (props: ToasterToast) =>
@@ -164,9 +168,9 @@ function toast({ ...props }: Toast) {
     dismiss,
     update,
   };
-}
+};
 
-function useToast() {
+const useToast = () => {
   const [state, setState] = React.useState<State>(memoryState);
 
   React.useEffect(() => {
@@ -184,6 +188,6 @@ function useToast() {
     toast,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   };
-}
+};
 
 export { useToast, toast };

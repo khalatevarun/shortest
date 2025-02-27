@@ -6,14 +6,14 @@ import { BrowserManager } from "@/browser/manager";
 import { getConfig, initializeConfig } from "@/index";
 import type { TestFunction } from "@/types/test";
 
-export async function main() {
+export const main = async () => {
   console.log(pc.cyan("\n🧪 Testing AI Integration"));
   console.log(pc.cyan("======================="));
 
   const browserManager = new BrowserManager(getConfig());
 
   try {
-    await initializeConfig();
+    await initializeConfig({});
     console.log("🚀 Launching browser...");
     const context = await browserManager.launch();
     const page = context.pages()[0];
@@ -92,7 +92,7 @@ export async function main() {
     console.log("\n🧹 Cleaning up...");
     await browserManager.close();
   }
-}
+};
 
 console.log("🤖 AI Integration Test");
 console.log("=====================");

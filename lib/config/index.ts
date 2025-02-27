@@ -11,7 +11,14 @@ const CONFIG_FILE_PATH = "shortest.yml";
 
 let config: Readonly<Config> = Object.freeze({});
 
-async function loadConfig(): Promise<void> {
+/**
+ * Loads configuration file.
+ *
+ * @throws {Error} When configuration file cannot be parsed
+ *
+ * @private
+ */
+const loadConfig = async (): Promise<void> => {
   try {
     const fileContents = await fs.readFile(CONFIG_FILE_PATH, "utf8");
     const parsedConfig = yaml.load(fileContents) as Record<string, unknown>;
@@ -35,43 +42,64 @@ async function loadConfig(): Promise<void> {
       );
     }
   }
-}
+};
 
-async function getConfig(): Promise<Readonly<Config>> {
+/**
+ * Returns the current configuration, loading it if necessary.
+ *
+ * @returns {Promise<Readonly<Config>>} Frozen configuration object
+ * @throws {Error} When configuration cannot be loaded
+ *
+ * @private
+ */
+export const getConfig = async (): Promise<Readonly<Config>> => {
   if (Object.keys(config).length === 0) {
     await loadConfig();
   }
   return config;
-}
+};
 
-async function getRepoConfig({
+/**
+ * Gets repository-specific configuration.
+ *
+ * @param {Object} params - Repository parameters
+ * @param {string} params.owner - Repository owner
+ * @param {string} params.repo - Repository name
+ * @returns {Promise<RepositoryConfig>} Repository configuration
+ *
+ * @private
+ */
+export const getRepoConfig = async ({
   owner,
   repo,
 }: {
   owner: string;
   repo: string;
-}): Promise<RepositoryConfig> {
+}): Promise<RepositoryConfig> => {
   const fullConfig = await getConfig();
   const repoKey = `${owner}/${repo}`;
   return (
     fullConfig[repoKey] || { repository_name: repoKey, ...DEFAULT_REPO_CONFIG }
   );
-}
+};
 
-async function getTestPatternsConfig({
+/**
+ * Gets test patterns configuration for a repository.
+ *
+ * @param {Object} params - Repository parameters
+ * @param {string} params.owner - Repository owner
+ * @param {string} params.repo - Repository name
+ * @returns {Promise<RepositoryConfig["test_patterns"]>} Test patterns configuration
+ *
+ * @private
+ */
+export const getTestPatternsConfig = async ({
   owner,
   repo,
 }: {
   owner: string;
   repo: string;
-}): Promise<RepositoryConfig["test_patterns"]> {
+}): Promise<RepositoryConfig["test_patterns"]> => {
   const repoConfig = await getRepoConfig({ owner, repo });
   return repoConfig.test_patterns;
-}
-
-export { getConfig, getRepoConfig, getTestPatternsConfig };
-
-// Add this export for testing
-export function _resetConfigForTesting(): void {
-  config = Object.freeze({});
-}
+};

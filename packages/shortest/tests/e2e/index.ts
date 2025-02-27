@@ -8,7 +8,7 @@ import { initializeConfig } from "@/index";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function findMonorepoRoot(startDir: string): string {
+const findMonorepoRoot = (startDir: string): string => {
   let currentDir = startDir;
   while (currentDir !== path.parse(currentDir).root) {
     const pkgJsonPath = path.join(currentDir, "package.json");
@@ -24,7 +24,7 @@ function findMonorepoRoot(startDir: string): string {
   throw new Error(
     "Could not find monorepo root (no workspace package.json found)",
   );
-}
+};
 
 const projectRoot = findMonorepoRoot(__dirname);
 
@@ -54,7 +54,7 @@ describe("End-to-end tests", async () => {
     try {
       console.log(pc.cyan("\n🚀 Initializing test environment..."));
       console.log(pc.cyan(`Looking for config in: ${projectRoot}`));
-      await initializeConfig(projectRoot);
+      await initializeConfig({ configDir: projectRoot });
       isSetupComplete = true;
     } catch (error) {
       console.error(pc.red("\n❌ Failed to initialize config:"), error);

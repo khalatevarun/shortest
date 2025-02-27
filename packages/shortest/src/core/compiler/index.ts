@@ -2,7 +2,7 @@ import { mkdirSync, existsSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join, resolve, basename } from "path";
 import { build, BuildOptions } from "esbuild";
-import { ConfigError } from "../../utils/errors";
+import { ConfigError } from "@/utils/errors";
 
 export class TestCompiler {
   private cacheDir: string;
@@ -31,9 +31,10 @@ export class TestCompiler {
       js: `
         import { fileURLToPath } from 'url';
         import { dirname } from 'path';
+        import { createRequire } from 'module';
+
         const __filename = fileURLToPath(import.meta.url);
         const __dirname = dirname(__filename);
-        import { createRequire } from "module";
         const require = createRequire(import.meta.url);
       `,
     },
@@ -70,7 +71,15 @@ export class TestCompiler {
       },
       resolveExtensions: [".ts", ".js", ".mjs"],
       banner: {
-        js: 'import { createRequire } from "module";const require = createRequire(import.meta.url);',
+        js: `
+          import { fileURLToPath } from 'url';
+          import { dirname } from 'path';
+          import { createRequire } from 'module';
+
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = dirname(__filename);
+          const require = createRequire(import.meta.url);
+        `,
       },
     });
 

@@ -4,20 +4,21 @@ import { expect as jestExpect } from "expect";
 import { APIRequest } from "@/browser/core/api-request";
 import { CONFIG_FILENAME, ENV_LOCAL_FILENAME } from "@/constants";
 import { TestCompiler } from "@/core/compiler";
+import { getLogger } from "@/log";
 import {
   TestFunction,
   TestAPI,
   TestContext,
   TestChain,
-  ShortestConfig,
+  ShortestStrictConfig,
+  CLIOptions,
 } from "@/types";
 import { parseConfig } from "@/utils/config";
-import { ConfigError } from "@/utils/errors";
-
+import { ConfigError, ShortestError } from "@/utils/errors";
 // to include the global expect in the generated d.ts file
 import "./globals";
 
-let globalConfig: ShortestConfig | null = null;
+let globalConfig: ShortestStrictConfig | null = null;
 const compiler = new TestCompiler();
 
 // Initialize Shortest namespace and globals
@@ -47,10 +48,18 @@ if (!global.__shortest__) {
   dotenv.config({ path: join(process.cwd(), ENV_LOCAL_FILENAME) });
 }
 
-export async function initializeConfig(configDir?: string) {
-  if (globalConfig) return globalConfig;
-
-  configDir = configDir || process.cwd();
+export const initializeConfig = async ({
+  cliOptions,
+  configDir = process.cwd(),
+}: {
+  cliOptions?: CLIOptions;
+  configDir?: string;
+}) => {
+  const log = getLogger();
+  if (globalConfig) {
+    return globalConfig;
+  }
+  log.trace("Initializing config");
 
   dotenv.config({ path: join(configDir, ".env") });
   dotenv.config({ path: join(configDir, ENV_LOCAL_FILENAME) });
@@ -66,8 +75,8 @@ export async function initializeConfig(configDir?: string) {
     try {
       const module = await compiler.loadModule(file, configDir);
 
-      const config = module.default;
-      const parsedConfig = parseConfig(config);
+      const userConfig = module.default;
+      const parsedConfig = parseConfig(userConfig, cliOptions);
       configs.push({
         file,
         config: parsedConfig,
@@ -88,32 +97,32 @@ export async function initializeConfig(configDir?: string) {
   }
 
   if (configs.length > 1) {
-    throw new Error(
+    throw new ConfigError(
+      "multiple-config",
       `Multiple config files found: ${configs.map((c) => c.file).join(", ")}. Please keep only one.`,
     );
   }
-
-  globalConfig = {
-    ...configs[0].config,
-    anthropicKey:
-      process.env.ANTHROPIC_API_KEY || configs[0].config.anthropicKey,
-  };
+  globalConfig = configs[0].config;
+  log.debug("Config initialized", { globalConfig });
 
   return globalConfig;
-}
+};
 
-export function getConfig(): ShortestConfig {
+export const getConfig = (): ShortestStrictConfig => {
   if (!globalConfig) {
-    throw new Error("Config not initialized. Call initializeConfig() first");
+    throw new ConfigError(
+      "no-config",
+      "Config not initialized. Call initializeConfig() first",
+    );
   }
   return globalConfig;
-}
+};
 
-function createTestChain(
+const createTestChain = (
   nameOrFn: string | string[] | ((context: TestContext) => Promise<void>),
   payloadOrFn?: ((context: TestContext) => Promise<void>) | any,
   fn?: (context: TestContext) => Promise<void>,
-): TestChain {
+): TestChain => {
   const registry = global.__shortest__.registry;
 
   // Handle array of test names
@@ -125,7 +134,8 @@ function createTestChain(
         expectations: [],
       };
 
-      registry.tests.set(name, [...(registry.tests.get(name) || []), test]);
+      const existingTests = registry.tests.get(name) || [];
+      registry.tests.set(name, [...existingTests, test]);
       registry.currentFileTests.push(test);
       return test;
     });
@@ -133,7 +143,7 @@ function createTestChain(
     // Return chain for the last test
     const lastTest = tests[tests.length - 1];
     if (!lastTest.name) {
-      throw new Error("Test name is required");
+      throw new ShortestError("Test name is required");
     }
     return createTestChain(lastTest.name, payloadOrFn, fn);
   }
@@ -150,13 +160,19 @@ function createTestChain(
     registry.currentFileTests.push(test);
     return {
       expect: () => {
-        throw new Error("expect() cannot be called on direct execution test");
+        throw new ShortestError(
+          "expect() cannot be called on direct execution test",
+        );
       },
       after: () => {
-        throw new Error("after() cannot be called on direct execution test");
+        throw new ShortestError(
+          "after() cannot be called on direct execution test",
+        );
       },
       before: () => {
-        throw new Error("before() cannot be called on direct execution test");
+        throw new ShortestError(
+          "before() cannot be called on direct execution test",
+        );
       },
     };
   }
@@ -170,7 +186,8 @@ function createTestChain(
     expectations: [],
   };
 
-  registry.tests.set(nameOrFn, [...(registry.tests.get(nameOrFn) || []), test]);
+  let existingTests = registry.tests.get(nameOrFn) || [];
+  registry.tests.set(nameOrFn, [...existingTests, test]);
   registry.currentFileTests.push(test);
 
   const chain: TestChain = {
@@ -181,7 +198,7 @@ function createTestChain(
     ) {
       // Handle direct execution for expect
       if (typeof descriptionOrFn === "function") {
-        test.expectations = test.expectations || [];
+        test.expectations ||= [];
         test.expectations.push({
           directExecution: true,
           fn: descriptionOrFn,
@@ -190,7 +207,7 @@ function createTestChain(
       }
 
       // Existing expect implementation...
-      test.expectations = test.expectations || [];
+      test.expectations ||= [];
       test.expectations.push({
         description: descriptionOrFn,
         payload: typeof payloadOrFn === "function" ? undefined : payloadOrFn,
@@ -209,7 +226,7 @@ function createTestChain(
   };
 
   return chain;
-}
+};
 
 export const test: TestAPI = Object.assign(
   (
@@ -238,5 +255,5 @@ export const test: TestAPI = Object.assign(
 );
 
 export const shortest: TestAPI = test;
+export type { ShortestConfig } from "@/types/config";
 export { APIRequest };
-export type { ShortestConfig };

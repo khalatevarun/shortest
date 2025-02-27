@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Log } from "@/log/log";
 import { LogOutput } from "@/log/output";
+import { ConfigError } from "@/utils/errors";
 
 vi.mock("@/log/output", () => ({
   LogOutput: {
@@ -28,6 +29,12 @@ describe("Log", () => {
         level: "debug",
         format: "terminal",
       });
+    });
+
+    it("throws ConfigError when invalid config is provided", () => {
+      expect(() => new Log({ level: "invalid-level" as any })).toThrow(
+        ConfigError,
+      );
     });
   });
 
@@ -90,6 +97,54 @@ describe("Log", () => {
         expect.objectContaining({
           message: "User logged in",
           metadata,
+        }),
+        "terminal",
+        undefined,
+      );
+    });
+
+    it("shows warnings even when below configured level", () => {
+      const log = new Log({ level: "error" });
+      const consoleSpy = vi.spyOn(console, "warn");
+
+      log.warn("important warning");
+
+      expect(LogOutput.render).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(" WARN "),
+        expect.stringContaining("important warning"),
+      );
+    });
+
+    it("handles multiple arguments with metadata", () => {
+      log.info("User", "action", "completed", { userId: 123, action: "login" });
+      expect(LogOutput.render).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "User action completed",
+          metadata: { userId: 123, action: "login" },
+        }),
+        "terminal",
+        undefined,
+      );
+    });
+
+    it("handles undefined and null arguments", () => {
+      log.info(undefined, null, "message");
+      expect(LogOutput.render).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "undefined null message",
+        }),
+        "terminal",
+        undefined,
+      );
+    });
+
+    it("handles object-like arguments that aren't metadata", () => {
+      const date = new Date();
+      log.info("Time is", date);
+      expect(LogOutput.render).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: `Time is ${date}`,
         }),
         "terminal",
         undefined,
@@ -158,19 +213,6 @@ describe("Log", () => {
 
       expect(LogOutput.render).toHaveBeenCalledWith(
         expect.any(Object),
-        "terminal",
-        undefined,
-      );
-    });
-
-    it("logs group operations at trace level", () => {
-      log.setGroup("Test");
-      expect(LogOutput.render).toHaveBeenCalledWith(
-        expect.objectContaining({
-          level: "trace",
-          message: "Setting group",
-          metadata: { groupName: "Test" },
-        }),
         "terminal",
         undefined,
       );

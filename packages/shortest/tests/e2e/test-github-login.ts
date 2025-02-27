@@ -4,12 +4,12 @@ import { GitHubTool } from "@/browser/integrations/github";
 import { BrowserManager } from "@/browser/manager";
 import { getConfig, initializeConfig } from "@/index";
 
-export async function main() {
+export const main = async () => {
   const browserManager = new BrowserManager(getConfig());
   const githubTool = new GitHubTool();
 
   try {
-    await initializeConfig();
+    await initializeConfig({});
     console.log(pc.cyan("\n🚀 First browser launch..."));
     let context = await browserManager.launch();
     let page = context.pages()[0];
@@ -80,7 +80,7 @@ export async function main() {
   } finally {
     await browserManager.close();
   }
-}
+};
 
 console.log(pc.cyan("🧪 Session Cleanup Test"));
 console.log(pc.cyan("===================="));

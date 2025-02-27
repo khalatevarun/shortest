@@ -2,16 +2,17 @@ import { readFile, writeFile } from "node:fs/promises";
 import os from "os";
 import { join } from "path";
 
+// eslint-disable-next-line zod/require-zod-schema-types
 type GitIgnoreResult = {
   wasCreated: boolean;
   wasUpdated: boolean;
   error?: Error;
 };
 
-export async function addToGitignore(
+export const addToGitignore = async (
   path: string,
   values: string[],
-): Promise<GitIgnoreResult> {
+): Promise<GitIgnoreResult> => {
   const result: GitIgnoreResult = {
     wasCreated: false,
     wasUpdated: false,
@@ -21,7 +22,7 @@ export async function addToGitignore(
     const gitignorePath = join(path, ".gitignore");
     let gitignore = await readFile(gitignorePath, "utf8").catch(() => null);
     const isNewFile = gitignore === null;
-    gitignore = gitignore ?? "";
+    gitignore ??= "";
     const EOL = gitignore.includes("\r\n") ? "\r\n" : os.EOL;
 
     const addValue = (content: string, value: string): string => {
@@ -53,4 +54,4 @@ export async function addToGitignore(
   }
 
   return result;
-}
+};

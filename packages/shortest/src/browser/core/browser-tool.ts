@@ -17,10 +17,11 @@ import {
 import { join } from "path";
 import { Page } from "playwright";
 import * as actions from "@/browser/actions";
-import { BaseBrowserTool, ToolError } from "@/browser/core";
+import { BaseBrowserTool } from "@/browser/core";
 import { GitHubTool } from "@/browser/integrations/github";
 import { MailosaurTool } from "@/browser/integrations/mailosaur";
 import { BrowserManager } from "@/browser/manager";
+import { DOT_SHORTEST_DIR_PATH } from "@/cache";
 import { getConfig, initializeConfig } from "@/index";
 import { getLogger, Log } from "@/log/index";
 import {
@@ -30,9 +31,7 @@ import {
   ShortestConfig,
 } from "@/types";
 import { ActionInput, ToolResult, BetaToolType } from "@/types/browser";
-import { CallbackError } from "@/types/test";
-import { AssertionCallbackError } from "@/types/test";
-import { getErrorDetails } from "@/utils/errors";
+import { getErrorDetails, ToolError, TestError } from "@/utils/errors";
 
 export class BrowserTool extends BaseBrowserTool {
   private page: Page;
@@ -58,13 +57,13 @@ export class BrowserTool extends BaseBrowserTool {
     super(config);
     this.page = page;
     this.browserManager = browserManager;
-    this.screenshotDir = join(process.cwd(), ".shortest", "screenshots");
+    this.screenshotDir = join(DOT_SHORTEST_DIR_PATH, "screenshots");
     mkdirSync(this.screenshotDir, { recursive: true });
     this.viewport = { width: config.width, height: config.height };
     this.testContext = config.testContext;
     this.log = getLogger();
-    // Update active page reference to a newly opened tab
     this.page.context().on("page", async (newPage) => {
+      this.log.trace("Update active page reference to a newly opened tab");
       await newPage.waitForLoadState("domcontentloaded").catch(() => {});
       this.page = newPage;
     });
@@ -74,7 +73,7 @@ export class BrowserTool extends BaseBrowserTool {
   }
 
   private async initialize(): Promise<void> {
-    await initializeConfig();
+    await initializeConfig({});
     this.config = getConfig();
 
     const initWithRetry = async () => {
@@ -95,8 +94,8 @@ export class BrowserTool extends BaseBrowserTool {
 
     await initWithRetry();
 
-    // Re-initialize on navigation
     this.page.on("load", async () => {
+      this.log.trace("Re-initialize on navigation");
       await initWithRetry();
     });
   }
@@ -110,9 +109,7 @@ export class BrowserTool extends BaseBrowserTool {
 
       // Add styles only if they don't exist
       const hasStyles = await this.page
-        .evaluate(() => {
-          return !!document.querySelector("style[data-shortest-cursor]");
-        })
+        .evaluate(() => !!document.querySelector("style[data-shortest-cursor]"))
         .catch(() => false);
 
       if (!hasStyles) {
@@ -165,8 +162,8 @@ export class BrowserTool extends BaseBrowserTool {
           document.body.appendChild(trail);
 
           // Restore or initialize position
-          window.cursorPosition = window.cursorPosition || { x: 0, y: 0 };
-          window.lastPosition = window.lastPosition || { x: 0, y: 0 };
+          window.cursorPosition ||= { x: 0, y: 0 };
+          window.lastPosition ||= { x: 0, y: 0 };
 
           // Set initial position
           cursor.style.left = window.cursorPosition.x + "px";
@@ -215,6 +212,7 @@ export class BrowserTool extends BaseBrowserTool {
 
   async execute(input: ActionInput): Promise<ToolResult> {
     try {
+      this.log.setGroup(`🛠️ ${input.action}`);
       let output = "";
       let metadata = {};
 
@@ -364,34 +362,32 @@ export class BrowserTool extends BaseBrowserTool {
               await currentTest.fn(testContext);
               testContext.currentStepIndex = 1;
               return { output: "Test function executed successfully" };
-            } else {
-              // Handle expectations
-              const expectationIndex = currentStepIndex - 1;
-              const expectation = currentTest.expectations?.[expectationIndex];
-
-              if (expectation?.fn) {
-                await expectation.fn(this.testContext);
-                testContext.currentStepIndex = currentStepIndex + 1;
-                return {
-                  output: `Callback function for "${expectation.description}" passed successfully`,
-                };
-              } else {
-                return {
-                  output: `Skipping callback execution: No callback function defined for expectation "${expectation?.description}"`,
-                };
-              }
             }
+            // Handle expectations
+            const expectationIndex = currentStepIndex - 1;
+            const expectation = currentTest.expectations?.[expectationIndex];
+
+            if (expectation?.fn) {
+              await expectation.fn(this.testContext);
+              testContext.currentStepIndex = currentStepIndex + 1;
+              return {
+                output: `Callback function for "${expectation.description}" passed successfully`,
+              };
+            }
+            return {
+              output: `Skipping callback execution: No callback function defined for expectation "${expectation?.description}"`,
+            };
           } catch (error) {
             // Check if it's an assertion error from jest/expect
             if (error && (error as any).matcherResult) {
               const assertionError = error as any;
-              throw new AssertionCallbackError(
-                assertionError.message,
-                assertionError.matcherResult.actual,
-                assertionError.matcherResult.expected,
-              );
+              throw new TestError("assertion-failed", assertionError.message, {
+                actual: assertionError.matcherResult.actual,
+                expected: assertionError.matcherResult.expected,
+              });
             }
-            throw new CallbackError(
+            throw new TestError(
+              "callback-execution-failed",
               error instanceof Error ? error.message : String(error),
             );
           }
@@ -403,11 +399,13 @@ export class BrowserTool extends BaseBrowserTool {
           }
 
           // Create new tab
+          this.log.trace("Creating new tab");
           const newPage = await this.page.context().newPage();
 
           try {
             const navigationTimeout = 30000;
 
+            this.log.trace("Navigating to", { url: input.url });
             await newPage.goto(input.url, {
               timeout: navigationTimeout,
               waitUntil: "domcontentloaded",
@@ -437,6 +435,7 @@ export class BrowserTool extends BaseBrowserTool {
                 },
               },
             };
+            this.log.trace("Navigation completed", metadata);
 
             break;
           } catch (error) {
@@ -592,7 +591,7 @@ export class BrowserTool extends BaseBrowserTool {
     } catch (error) {
       this.log.error("Browser action failed", getErrorDetails(error));
 
-      if (error instanceof AssertionCallbackError) {
+      if (error instanceof TestError && error.type === "assertion-failed") {
         return {
           output: `Assertion failed: ${error.message}${
             error.actual !== undefined
@@ -601,12 +600,17 @@ export class BrowserTool extends BaseBrowserTool {
           }`,
         };
       }
-      if (error instanceof CallbackError) {
+      if (
+        error instanceof TestError &&
+        error.type === "callback-execution-failed"
+      ) {
         return {
           output: `Callback execution failed: ${error.message}`,
         };
       }
       throw new ToolError(`Action failed: ${error}`);
+    } finally {
+      this.log.resetGroup();
     }
   }
 
@@ -663,13 +667,12 @@ export class BrowserTool extends BaseBrowserTool {
     try {
       // Quick check if page is in a stable state
       return await this.page
-        .evaluate(() => {
-          return (
+        .evaluate(
+          () =>
             document.readyState === "complete" &&
             !document.querySelector(".loading") &&
-            !document.querySelector(".cl-loading")
-          );
-        })
+            !document.querySelector(".cl-loading"),
+        )
         .catch(() => false);
     } catch {
       return false;
@@ -691,11 +694,13 @@ export class BrowserTool extends BaseBrowserTool {
     const filePathWithoutCwd = filePath.replace(process.cwd() + "/", "");
     this.log.debug("📺", "Screenshot saved", { filePath: filePathWithoutCwd });
 
-    return {
+    const metadata = {
       output: "Screenshot taken",
       base64_image: buffer.toString("base64"),
       metadata: await this.getMetadata(),
     };
+    this.log.trace("Screenshot details", metadata);
+    return metadata;
   }
 
   toToolParameters() {
@@ -817,11 +822,11 @@ export class BrowserTool extends BaseBrowserTool {
            * Gets deepest nested child node
            * If several nodes are on the same depth, the first node would be returned
            */
-          function getDeepestChildNode(element: Element): HTMLElement {
+          const getDeepestChildNode = (element: Element): HTMLElement => {
             let deepestChild = element.cloneNode(true) as HTMLElement;
             let maxDepth = 0;
 
-            function traverse(node: any, depth: number) {
+            const traverse = (node: any, depth: number) => {
               if (depth > maxDepth) {
                 maxDepth = depth;
                 deepestChild = node;
@@ -830,11 +835,11 @@ export class BrowserTool extends BaseBrowserTool {
               Array.from(node.children).forEach((child) => {
                 traverse(child, depth + 1);
               });
-            }
+            };
 
             traverse(deepestChild, 0);
             return deepestChild;
-          }
+          };
 
           const deepestNode = getDeepestChildNode(clone);
 
@@ -848,10 +853,10 @@ export class BrowserTool extends BaseBrowserTool {
           /**
            * Recursively delete attributes from Nodes
            */
-          function cleanAttributesRecursively(
+          const cleanAttributesRecursively = (
             element: Element,
             options: { exceptions: string[] },
-          ) {
+          ) => {
             Array.from(element.attributes).forEach((attr) => {
               if (!options.exceptions.includes(attr.name)) {
                 element.removeAttribute(attr.name);
@@ -861,7 +866,7 @@ export class BrowserTool extends BaseBrowserTool {
             Array.from(element.children).forEach((child) => {
               cleanAttributesRecursively(child, options);
             });
-          }
+          };
 
           cleanAttributesRecursively(node, {
             exceptions: allowedAttr,
@@ -869,9 +874,8 @@ export class BrowserTool extends BaseBrowserTool {
 
           // trim and remove white spaces
           return node.outerHTML.trim().replace(/\s+/g, " ");
-        } else {
-          return "";
         }
+        return "";
       },
       {
         x,

@@ -1,7 +1,11 @@
-import { LOG_LEVELS, LogLevel, LogConfig, LogConfigSchema } from "./config";
-import { LogEvent } from "./event";
-import { LogGroup } from "./group";
-import { LogOutput } from "./output";
+import pc from "picocolors";
+import { z } from "zod";
+import { LOG_LEVELS, LogLevel, LogConfig, LogConfigSchema } from "@/log/config";
+import { LogEvent } from "@/log/event";
+import { LogGroup } from "@/log/group";
+import { LogOutput } from "@/log/output";
+import { formatZodError } from "@/utils/errors";
+import { ConfigError } from "@/utils/errors";
 
 /**
  * Core logging class that handles log filtering, grouping, and output rendering.
@@ -33,7 +37,17 @@ export class Log {
   private currentGroup?: LogGroup;
 
   constructor(config: Partial<LogConfig> = {}) {
-    this.config = LogConfigSchema.parse(config);
+    try {
+      this.config = LogConfigSchema.parse(config);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new ConfigError(
+          "invalid-config",
+          formatZodError(error, "Invalid shortest.config"),
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -50,8 +64,14 @@ export class Log {
    * Processes and outputs a log event if it meets the minimum level requirement
    */
   private outputEvent(event: LogEvent): void {
-    if (!this.shouldLog(event.level)) return;
-    LogOutput.render(event, this.config.format, this.currentGroup);
+    if (this.shouldLog(event.level)) {
+      LogOutput.render(event, this.config.format, this.currentGroup);
+    } else if (event.level === "warn") {
+      console.warn(
+        pc.bgYellowBright(pc.black(" WARN ")),
+        pc.yellow(event.message),
+      );
+    }
   }
 
   /**
@@ -60,7 +80,7 @@ export class Log {
   log(level: LogLevel, ...args: any[]) {
     const metadata =
       args[args.length - 1]?.constructor === Object ? args.pop() : undefined;
-    const message = args.join(" ");
+    const message = args.map((arg) => String(arg)).join(" ");
     const event = new LogEvent(level, message, metadata);
     this.outputEvent(event);
   }
@@ -69,7 +89,14 @@ export class Log {
    * Creates a new log group for organizing related logs
    */
   setGroup(name: string): void {
-    this.log("trace", "Setting group", { groupName: name });
+    // Useful for additional logging
+    // const callerMatch = new Error().stack
+    //   ?.split("\n")[2]
+    //   ?.match(/at\s+(\S+)\s+/);
+    // this.log("trace", "Setting group", {
+    //   groupName: name,
+    //   calledBy: callerMatch?.[1] || "unknown",
+    // });
     this.currentGroup = new LogGroup(this, name, this.currentGroup);
   }
 
@@ -77,13 +104,20 @@ export class Log {
    * Resets to parent group or removes grouping if at root
    */
   resetGroup(): void {
+    const callerMatch = new Error().stack
+      ?.split("\n")[2]
+      ?.match(/at\s+(\S+)\s+/);
     if (this.currentGroup) {
-      this.log("trace", "Resetting group", {
-        groupName: this.currentGroup.name,
-      });
+      // Useful for additional logging
+      // this.log("trace", "Resetting group", {
+      //   groupName: this.currentGroup.name,
+      //   calledBy: callerMatch?.[1] || "unknown",
+      // });
       this.currentGroup = this.currentGroup?.parent;
     } else {
-      this.log("trace", "No group to reset");
+      this.log("trace", "No group to reset", {
+        calledBy: callerMatch?.[1] || "unknown",
+      });
     }
   }
 
@@ -91,7 +125,6 @@ export class Log {
    * Removes all group nesting
    */
   resetAllGroups(): void {
-    this.log("trace", "Resetting all groups");
     this.currentGroup = undefined;
   }
 
