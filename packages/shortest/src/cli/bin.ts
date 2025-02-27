@@ -201,7 +201,7 @@ const main = async () => {
     log.trace("Initializing TestRunner");
     const runner = new TestRunner(process.cwd(), config);
     await runner.initialize();
-    const success = await runner.execute(config.testPattern, lineNumber);
+    const success = await runner.execute(testPattern ?? config.testPattern, lineNumber);
     process.exitCode = success ? 0 : 1;
   } catch (error: any) {
     log.trace("Handling error for TestRunner");

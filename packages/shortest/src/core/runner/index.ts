@@ -459,11 +459,6 @@ export class TestRunner {
       this.reporter.onFileEnd(fileResult);
     }
   }
-
-  // async runTests(pattern?: string, lineNumber?: number) {
-  //   await this.initialize();
-  //   const files = await this.findTestFiles(pattern);
-
   async execute(testPattern: string, lineNumber?: number): Promise<boolean> {
     this.log.trace("Finding test files", { testPattern });
 
