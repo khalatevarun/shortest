@@ -356,7 +356,9 @@ export class TestRunner {
       const isInRange =
         lineNumber >= location.start && lineNumber <= location.end;
       if (isInRange) {
-        console.log(`Test found for line number ${lineNumber}: ${test.name}`);
+        this.log.trace(
+          `Test found for line number ${lineNumber}: ${test.name}`,
+        );
       }
 
       return isInRange;
