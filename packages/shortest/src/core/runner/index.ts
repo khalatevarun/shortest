@@ -486,7 +486,7 @@ export class TestRunner {
     let lineNumber: number | undefined;
 
     if (testPattern?.includes(":")) {
-      const [file, line] = testPattern.split(":");
+      const [_, line] = testPattern.split(":");
       lineNumber = parseInt(line, 10);
     }
 
