@@ -471,7 +471,7 @@ export class TestRunner {
       absolute: true,
     });
 
-    
+
     if (files.length === 0) {
       this.reporter.error(
         "Test Discovery",
@@ -482,6 +482,14 @@ export class TestRunner {
       });
       return false;
     }
+
+    let lineNumber: number | undefined;
+
+    if (testPattern?.includes(":")) {
+      const [file, line] = testPattern.split(":");
+      lineNumber = parseInt(line, 10);
+    }
+
 
     this.reporter.onRunStart(files.length);
     for (const file of files) {
