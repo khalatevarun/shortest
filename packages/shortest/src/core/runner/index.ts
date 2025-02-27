@@ -483,8 +483,6 @@ export class TestRunner {
       return false;
     }
 
-  
-
     this.reporter.onRunStart(files.length);
     for (const file of files) {
       await this.executeTestFile(file, lineNumber);
