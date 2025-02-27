@@ -464,13 +464,13 @@ export class TestRunner {
   //   await this.initialize();
   //   const files = await this.findTestFiles(pattern);
 
-  async execute(testPattern: string): Promise<boolean> {
+  async execute(testPattern: string, lineNumber?: number): Promise<boolean> {
     this.log.trace("Finding test files", { testPattern });
+
     const files = await glob(testPattern, {
       cwd: this.cwd,
       absolute: true,
     });
-
 
     if (files.length === 0) {
       this.reporter.error(
@@ -483,13 +483,7 @@ export class TestRunner {
       return false;
     }
 
-    let lineNumber: number | undefined;
-
-    if (testPattern?.includes(":")) {
-      const [_, line] = testPattern.split(":");
-      lineNumber = parseInt(line, 10);
-    }
-
+  
 
     this.reporter.onRunStart(files.length);
     for (const file of files) {

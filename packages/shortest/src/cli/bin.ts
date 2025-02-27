@@ -175,17 +175,14 @@ const main = async () => {
   const baseUrl = args
     .find((arg) => arg.startsWith("--target="))
     ?.split("=")[1];
-  const testPattern = args.find((arg) => !arg.startsWith("--"));
+  let testPattern = args.find((arg) => !arg.startsWith("--"));
   const noCache = args.includes("--no-cache");
-  let testFile: string | undefined;
   let lineNumber: number | undefined;
 
   if (testPattern?.includes(":")) {
     const [file, line] = testPattern.split(":");
-    testFile = file;
+    testPattern = file;
     lineNumber = parseInt(line, 10);
-  } else {
-    testFile = testPattern;
   }
 
   const cliOptions: CLIOptions = {
@@ -204,7 +201,7 @@ const main = async () => {
     log.trace("Initializing TestRunner");
     const runner = new TestRunner(process.cwd(), config);
     await runner.initialize();
-    const success = await runner.execute(config.testPattern);
+    const success = await runner.execute(config.testPattern, lineNumber);
     process.exitCode = success ? 0 : 1;
   } catch (error: any) {
     log.trace("Handling error for TestRunner");
