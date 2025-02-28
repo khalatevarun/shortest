@@ -352,7 +352,7 @@ export class TestRunner {
         if (testsToRun.length === 0) {
           this.reporter.error(
             "Test Discovery",
-            `No tests found at line ${lineNumber} in ${filePathWithoutCwd}`,
+            `No test found at line ${lineNumber} in ${filePathWithoutCwd}`,
           );
           process.exit(1);
         }
