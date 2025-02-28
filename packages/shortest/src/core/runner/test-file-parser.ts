@@ -1,7 +1,9 @@
 import { readFileSync } from "fs";
-import { createRequire } from "module";
+import * as parser from "@babel/parser";
 import type { NodePath } from "@babel/traverse";
+import traverse from "@babel/traverse";
 import type * as t from "@babel/types";
+import * as babelTypes from "@babel/types";
 import { z } from "zod";
 import { getLogger } from "@/log";
 
@@ -20,7 +22,6 @@ export const parseShortestTestFile = (filePath: string): TestLocation[] => {
   const log = getLogger();
   try {
     log.setGroup("File Parser");
-    const require = createRequire(import.meta.url);
 
     const TemplateElementSchema = z.object({
       value: z.object({
@@ -40,13 +41,8 @@ export const parseShortestTestFile = (filePath: string): TestLocation[] => {
       quasis: z.array(TemplateElementSchema),
     });
 
-    const babelTypes = require("@babel/types");
-    const babelParser = require("@babel/parser");
-    const traverseModule = require("@babel/traverse");
-    const babelTraverse = traverseModule.default || traverseModule;
-
     const fileContent = readFileSync(filePath, "utf8");
-    const ast = babelParser.parse(fileContent, {
+    const ast = parser.parse(fileContent, {
       sourceType: "module",
       plugins: [
         "typescript",
@@ -63,7 +59,7 @@ export const parseShortestTestFile = (filePath: string): TestLocation[] => {
       { name: string; node: NodePath<t.CallExpression> }
     >();
 
-    babelTraverse(ast, {
+    traverse(ast, {
       CallExpression(path: NodePath<t.CallExpression>) {
         const node = path.node;
 

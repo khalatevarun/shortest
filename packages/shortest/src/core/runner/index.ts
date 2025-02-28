@@ -425,6 +425,7 @@ export class TestRunner {
       this.reporter.onFileEnd(fileResult);
     }
   }
+
   async execute(testPattern: string, lineNumber?: number): Promise<boolean> {
     this.log.trace("Finding test files", { testPattern });
 
