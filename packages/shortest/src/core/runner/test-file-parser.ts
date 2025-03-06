@@ -1,11 +1,14 @@
 import { readFileSync } from "fs";
 import * as parser from "@babel/parser";
 import type { NodePath } from "@babel/traverse";
-import traverse from "@babel/traverse";
 import type * as t from "@babel/types";
 import * as babelTypes from "@babel/types";
 import { z } from "zod";
 import { getLogger } from "@/log";
+import traverseDefault from "@babel/traverse";
+
+// @ts-ignore
+const traverse = traverseDefault.default;
 
 export const EXPRESSION_PLACEHOLDER = "${...}";
 
@@ -22,6 +25,12 @@ export const parseShortestTestFile = (filePath: string): TestLocation[] => {
   const log = getLogger();
   try {
     log.setGroup("File Parser");
+
+    log.info("Imported modules:", {
+      parser: parser != null ? "✅" : "❌",
+      traverse: traverse != null ? "✅" : "❌",
+      zod: z != null ? "✅" : "❌"
+    });
 
     const TemplateElementSchema = z.object({
       value: z.object({
