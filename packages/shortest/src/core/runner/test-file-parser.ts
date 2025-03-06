@@ -1,11 +1,11 @@
 import { readFileSync } from "fs";
 import * as parser from "@babel/parser";
 import type { NodePath } from "@babel/traverse";
+import traverseDefault from "@babel/traverse";
 import type * as t from "@babel/types";
 import * as babelTypes from "@babel/types";
 import { z } from "zod";
 import { getLogger } from "@/log";
-import traverseDefault from "@babel/traverse";
 
 // @ts-ignore
 const traverse = traverseDefault.default;
@@ -29,7 +29,7 @@ export const parseShortestTestFile = (filePath: string): TestLocation[] => {
     log.info("Imported modules:", {
       parser: parser != null ? "✅" : "❌",
       traverse: traverse != null ? "✅" : "❌",
-      zod: z != null ? "✅" : "❌"
+      zod: z != null ? "✅" : "❌",
     });
 
     const TemplateElementSchema = z.object({
