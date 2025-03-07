@@ -26,12 +26,15 @@ export const parseShortestTestFile = (filePath: string): TestLocation[] => {
   try {
     log.setGroup("File Parser");
 
+<<<<<<< Updated upstream
     log.info("Imported modules:", {
       parser: parser != null ? "✅" : "❌",
       traverse: traverse != null ? "✅" : "❌",
       zod: z != null ? "✅" : "❌",
     });
 
+=======
+>>>>>>> Stashed changes
     const TemplateElementSchema = z.object({
       value: z.object({
         cooked: z.string().optional(),
