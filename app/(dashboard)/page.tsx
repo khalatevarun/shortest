@@ -3,6 +3,7 @@ import { Code } from "bright";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import AntiworkFooter from "@/components/ui/antiwork-footer";
 
 export default function HomePage() {
   return (
@@ -78,6 +79,7 @@ shortest('Login to the app using email and password', {
           </div>
         </div>
       </section>
+      <AntiworkFooter/>
     </main>
   );
 }
